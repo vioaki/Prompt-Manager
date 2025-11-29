@@ -72,7 +72,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # 初始化/升级数据库 (自动创建 data.sqlite 和管理员账户)
-manage_db.py
+python manage_db.py
 ```
 
 > **默认管理员账号**: `admin`
