@@ -16,7 +16,7 @@ services:
       TZ: Asia/Shanghai
 
     ports:
-      - "5555:5000"
+      - "5000:5000"
 
     volumes:
       - ./data:/app/data
