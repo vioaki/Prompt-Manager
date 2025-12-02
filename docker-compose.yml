@@ -19,7 +19,7 @@ services:
       - "5000:5000"
 
     volumes:
-      - ./data:/app/data
+      - ./data:/app/instance
       - ./uploads:/app/static/uploads
       - ./logs:/app/logs
 
