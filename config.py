@@ -4,14 +4,18 @@ from dotenv import load_dotenv
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
 
+instance_path = os.path.join(basedir, 'instance')
+if not os.path.exists(instance_path):
+    os.makedirs(instance_path)
 
 class Config:
     """应用全局配置"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-please-change-in-prod'
 
     # 数据库配置
+    # 将默认数据库路径指向 instance/data.sqlite
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
-                              'sqlite:///' + os.path.join(basedir, 'data.sqlite')
+                              'sqlite:///' + os.path.join(instance_path, 'data.sqlite')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # 文件上传配置
