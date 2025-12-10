@@ -110,16 +110,20 @@
     </div>
 
     <div class="glass-panel p-4 mb-5 animate-up" style="animation-delay: 0.3s;">
-        <h4 class="fw-bold art-title mb-4" style="font-size: 1.1rem;">开发者接口 (API)</h4>
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <h4 class="fw-bold art-title mb-0" style="font-size: 1.1rem;">开发者接口 (API)</h4>
+        </div>
+
         <p class="text-secondary mb-4 small">
-            本系统提供标准的 HTTP <code>GET</code> 接口，返回 JSON 格式的作品数据，方便集成到其他工作流中。
+            本系统提供高性能 RESTful API，支持智能缓存与无限分页模式。<br>
+            适用于构建第三方客户端、自动化脚本或集成到工作流中。
         </p>
 
         <div class="mb-4">
             <h6 class="fw-bold small text-secondary text-uppercase ls-1 mb-2">1. 画廊数据 (Gallery)</h6>
-            <div class="input-glass rounded-3 p-3 border border-secondary border-opacity-10 d-flex align-items-center shadow-sm">
+            <div class="input-glass rounded-3 p-3 d-flex align-items-center shadow-sm">
                 <span class="badge bg-secondary me-3">GET</span>
-                <code class="text-dark fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
+                <code class="fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
                     {{ url_for('public.api_gallery_list', _external=True) }}
                 </code>
                 <button class="btn btn-sm btn-outline-secondary border-0"
@@ -130,11 +134,11 @@
             </div>
         </div>
 
-        <div class="mb-4">
+        <div class="mb-5">
             <h6 class="fw-bold small text-secondary text-uppercase ls-1 mb-2">2. 模板数据 (Templates)</h6>
-            <div class="input-glass rounded-3 p-3 border border-secondary border-opacity-10 d-flex align-items-center shadow-sm">
+            <div class="input-glass rounded-3 p-3 d-flex align-items-center shadow-sm">
                 <span class="badge bg-secondary me-3">GET</span>
-                <code class="text-dark fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
+                <code class="fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
                     {{ url_for('public.api_templates_list', _external=True) }}
                 </code>
                 <button class="btn btn-sm btn-outline-secondary border-0"
@@ -146,60 +150,125 @@
         </div>
 
         <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">请求参数 (Query Parameters)</h6>
-        <div class="table-responsive mb-4 rounded-3 border border-secondary border-opacity-10 overflow-hidden">
-            <table class="table table-sm small text-secondary mb-0">
-                <thead>
+
+        <div class="table-responsive input-glass rounded-3 mb-5 overflow-hidden">
+            <table class="table table-sm small mb-0" style="--bs-table-bg: transparent;">
+                <thead style="background-color: var(--btn-bg);">
                     <tr>
-                        <th class="ps-3 py-2" style="width: 120px;">参数名</th>
-                        <th class="py-2" style="width: 80px;">类型</th>
-                        <th class="py-2" style="width: 80px;">默认值</th>
-                        <th class="py-2">描述</th>
+                        <th class="ps-3 py-3 border-bottom-0" style="width: 100px; color: var(--text-primary);">参数名</th>
+                        <th class="py-3 border-bottom-0" style="width: 70px; color: var(--text-primary);">类型</th>
+                        <th class="py-3 border-bottom-0" style="width: 100px; color: var(--text-primary);">默认值</th>
+                        <th class="py-3 border-bottom-0" style="color: var(--text-primary);">描述与示例</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td class="ps-3 font-monospace" style="color: var(--text-primary);">page</td>
-                        <td>Int</td>
-                        <td>1</td>
-                        <td>分页页码。</td>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">per_page</td>
+                        <td class="py-3" style="color: var(--text-secondary);">Int</td>
+                        <td class="py-3" style="color: var(--text-secondary);">500</td>
+                        <td class="py-3" style="color: var(--text-secondary);">
+                            每页数量。支持 <code class="px-1 rounded fw-bold" style="background:var(--btn-bg); color:var(--text-primary);">-1</code> 开启<span class="fw-bold" style="color: var(--text-primary);">无限模式</span>（获取全部，上限 1w）。
+                        </td>
                     </tr>
                     <tr>
-                        <td class="ps-3 font-monospace" style="color: var(--text-primary);">per_page</td>
-                        <td>Int</td>
-                        <td>20</td>
-                        <td>每页返回数量（最大 100）。</td>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">page</td>
+                        <td class="py-3" style="color: var(--text-secondary);">Int</td>
+                        <td class="py-3" style="color: var(--text-secondary);">1</td>
+                        <td class="py-3" style="color: var(--text-secondary);">分页页码。配合返回元数据中的 <code>meta.next_url</code> 可自动翻页。</td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">q</td>
+                        <td class="py-3" style="color: var(--text-secondary);">String</td>
+                        <td class="py-3" style="color: var(--text-secondary);">Null</td>
+                        <td class="py-3" style="color: var(--text-secondary);">关键词搜索（匹配标题、Prompt或作者）。<br>例: <code>?q=cyberpunk</code></td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">tag</td>
+                        <td class="py-3" style="color: var(--text-secondary);">String</td>
+                        <td class="py-3" style="color: var(--text-secondary);">Null</td>
+                        <td class="py-3" style="color: var(--text-secondary);">标签筛选。<br>例: <code>?tag=二次元</code></td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">sort</td>
+                        <td class="py-3" style="color: var(--text-secondary);">String</td>
+                        <td class="py-3" style="color: var(--text-secondary);">date</td>
+                        <td class="py-3" style="color: var(--text-secondary);">排序方式。可选值: <code>date</code> (最新), <code>hot</code> (热度), <code>random</code> (随机)。</td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-        <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">响应示例 (Response Example)</h6>
-        <div class="bg-dark text-white p-3 rounded-3 shadow-sm position-relative group">
-            <pre class="m-0 custom-scrollbar" style="font-family: 'SF Mono', monospace; font-size: 0.8rem; color: #a5d6ff; max-height: 300px; overflow-y: auto;">{
-  "current_page": 1,
-  "pages": 5,
-  "total": 120,
+        <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">⚡️ 高级特性：ETag 缓存校验</h6>
+
+        <div class="input-glass p-4 rounded-3 mb-5 border border-secondary border-opacity-10">
+            <p class="small mb-4" style="color: var(--text-secondary);">
+                为了节省带宽并提高轮询效率，API 实现了标准的 <strong>ETag / 304 Not Modified</strong> 机制。这允许客户端在数据未发生变化时，直接跳过下载过程。
+            </p>
+
+            <div class="d-flex flex-column gap-3">
+                <div class="d-flex gap-3">
+                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.8rem; flex-shrink: 0;">1</div>
+                    <div class="small text-secondary">
+                        <strong style="color: var(--text-primary);">首次请求：</strong> 服务器返回完整数据，并在 Header 中附带一个唯一指纹：<br>
+                        <code class="text-primary mt-1 d-inline-block">ETag: "68b329da9893e34099c7d8ad5cb9c940"</code>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3">
+                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.8rem; flex-shrink: 0;">2</div>
+                    <div class="small text-secondary">
+                        <strong style="color: var(--text-primary);">后续请求：</strong> 客户端在 Header 中发送上次收到的指纹：<br>
+                        <code class="text-primary mt-1 d-inline-block">If-None-Match: "68b329da9893e34099c7d8ad5cb9c940"</code>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3">
+                    <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.8rem; flex-shrink: 0;">3</div>
+                    <div class="small text-secondary">
+                        <strong style="color: var(--text-primary);">极速响应：</strong> 如果库中数据没有变化（哈希一致），服务器将直接返回 <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">304 Not Modified</span> 状态码，且 <strong>不返回任何数据包体</strong> (Body Length = 0)。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">响应示例 (Response Structure)</h6>
+        <div class="bg-dark text-white p-3 rounded-3 shadow-sm position-relative group border border-secondary border-opacity-25">
+            <button class="btn btn-sm btn-dark position-absolute top-0 end-0 m-2 border border-secondary border-opacity-25"
+                    onclick="copyCode(this)" style="font-size: 0.7rem;">Copy JSON</button>
+
+            <pre class="m-0 custom-scrollbar" style="font-family: 'SF Mono', monospace; font-size: 0.8rem; color: #a5d6ff; max-height: 400px; overflow-y: auto;">{
+  "code": 200,
+  "message": "success",
+  "meta": {
+    "page": 1,
+    "per_page": 500,
+    "total_items": 1280,
+    "total_pages": 3,
+    "has_next": true,
+    "next_url": "https://.../api/gallery?page=2&per_page=500",
+    "server_timestamp": 1715421000
+  },
   "data": [
     {
-      "id": 42,
-      "title": "Neon City",
+      "id": 1024,
+      "title": "Only the flowers know Ver.2",
+      "author": "vioaki",
       "type": "img2img",
-      "file_path": "https://domain.com/static/uploads/uuid.jpg",
+      "file_path": "https://example.com/static/uploads/uuid.jpg",
+      "thumbnail_path": "https://example.com/static/uploads/uuid_thumb.jpg",
+      "prompt": "This is a masterpiece...",
       "refs": [
          {
            "position": 0,
            "is_placeholder": false,
-           "file_path": "https://domain.com/static/uploads/ref1.jpg"
-         },
-         {
-           "position": 1,
-           "is_placeholder": true,
-           "file_path": "{{ '{{userText}}' }}"
+           "file_path": "https://example.com/static/uploads/ref1.jpg"
          }
       ],
-      "tags": ["scifi", "city"],
-      "created_at": "2023-10-27T10:00:00"
-    }
+      "tags": ["banana", "violet"],
+      "heat_score": 52,
+      "created_at": "2025-12-10T10:00:00"
+    },
+    // ... more items ...
   ]
 }</pre>
         </div>
@@ -210,6 +279,11 @@
     .hover-scale:hover { transform: scale(1.05); }
     .transition-transform { transition: transform 0.2s ease; }
     .line-height-sm { line-height: 1.5; }
+
+    /* 修复 input-glass 内表格边框颜色，防止在黑暗模式下太亮 */
+    .input-glass .table>:not(caption)>*>* {
+        border-bottom-color: rgba(128,128,128,0.1);
+    }
 </style>
 
 <script>
@@ -227,5 +301,14 @@
         });
     }
 })();
+
+function copyCode(btn) {
+    const pre = btn.nextElementSibling;
+    navigator.clipboard.writeText(pre.textContent).then(() => {
+        const original = btn.innerText;
+        btn.innerText = "Copied!";
+        setTimeout(() => btn.innerText = original, 2000);
+    });
+}
 </script>
 {% endblock %}
