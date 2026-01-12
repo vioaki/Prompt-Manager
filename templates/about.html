@@ -149,6 +149,95 @@
             </div>
         </div>
 
+        <div class="mb-5">
+            <h6 class="fw-bold small text-secondary text-uppercase ls-1 mb-2">3. 上传接口 (Upload)</h6>
+            <div class="input-glass rounded-3 p-3 d-flex align-items-center shadow-sm">
+                <span class="badge bg-success me-3">POST</span>
+                <code class="fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
+                    {{ url_for('public.api_upload', _external=True) }}
+                </code>
+                <button class="btn btn-sm btn-outline-secondary border-0"
+                        onclick="navigator.clipboard.writeText('{{ url_for('public.api_upload', _external=True) }}'); alert('地址已复制')"
+                        title="复制接口地址">
+                    <i class="bi bi-clipboard"></i>
+                </button>
+            </div>
+            <p class="text-secondary small mt-2 mb-0 ps-1">
+                <i class="bi bi-info-circle me-1"></i>使用 <code>multipart/form-data</code> 格式提交
+            </p>
+        </div>
+
+        <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">上传参数 (Upload Parameters)</h6>
+
+        <div class="table-responsive input-glass rounded-3 mb-5 overflow-hidden">
+            <table class="table table-sm small mb-0" style="--bs-table-bg: transparent;">
+                <thead style="background-color: var(--btn-bg);">
+                    <tr>
+                        <th class="ps-3 py-3 border-bottom-0" style="width: 110px; color: var(--text-primary);">参数名</th>
+                        <th class="py-3 border-bottom-0" style="width: 70px; color: var(--text-primary);">类型</th>
+                        <th class="py-3 border-bottom-0" style="width: 50px; color: var(--text-primary);">必填</th>
+                        <th class="py-3 border-bottom-0" style="color: var(--text-primary);">描述</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">image</td>
+                        <td class="py-3" style="color: var(--text-secondary);">File</td>
+                        <td class="py-3"><span class="badge bg-danger bg-opacity-75">是</span></td>
+                        <td class="py-3" style="color: var(--text-secondary);">主图文件 (jpg/png/gif/webp)</td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">title</td>
+                        <td class="py-3" style="color: var(--text-secondary);">String</td>
+                        <td class="py-3"><span class="badge bg-danger bg-opacity-75">是</span></td>
+                        <td class="py-3" style="color: var(--text-secondary);">作品标题</td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">prompt</td>
+                        <td class="py-3" style="color: var(--text-secondary);">String</td>
+                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                        <td class="py-3" style="color: var(--text-secondary);">提示词内容</td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">author</td>
+                        <td class="py-3" style="color: var(--text-secondary);">String</td>
+                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                        <td class="py-3" style="color: var(--text-secondary);">作者名称，默认"匿名"</td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">description</td>
+                        <td class="py-3" style="color: var(--text-secondary);">String</td>
+                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                        <td class="py-3" style="color: var(--text-secondary);">作品描述</td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">type</td>
+                        <td class="py-3" style="color: var(--text-secondary);">String</td>
+                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                        <td class="py-3" style="color: var(--text-secondary);"><code>txt2img</code> 或 <code>img2img</code></td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">category</td>
+                        <td class="py-3" style="color: var(--text-secondary);">String</td>
+                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                        <td class="py-3" style="color: var(--text-secondary);"><code>gallery</code> (默认) 或 <code>template</code></td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">tags</td>
+                        <td class="py-3" style="color: var(--text-secondary);">String</td>
+                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                        <td class="py-3" style="color: var(--text-secondary);">逗号分隔，如 <code>风景,日落</code></td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">ref_images</td>
+                        <td class="py-3" style="color: var(--text-secondary);">File[]</td>
+                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                        <td class="py-3" style="color: var(--text-secondary);">参考图 (img2img 时使用，可传多个)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
         <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">请求参数 (Query Parameters)</h6>
 
         <div class="table-responsive input-glass rounded-3 mb-5 overflow-hidden">

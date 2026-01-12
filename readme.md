@@ -157,3 +157,88 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
 ├── config.py        # 配置文件加载
 └── app.py           # 应用启动入口
 ```
+
+## API 接口
+
+系统提供 RESTful API，支持第三方客户端集成和自动化工作流。
+
+### 获取数据
+
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/gallery` | GET | 获取画廊数据 |
+| `/api/templates` | GET | 获取模板数据 |
+
+**查询参数：**
+
+| 参数 | 类型 | 默认值 | 描述 |
+|------|------|--------|------|
+| `page` | Int | 1 | 页码 |
+| `per_page` | Int | 500 | 每页数量，`-1` 获取全部（上限 1w） |
+| `q` | String | - | 关键词搜索 |
+| `tag` | String | - | 标签筛选 |
+| `sort` | String | date | 排序：`date` / `hot` / `random` |
+
+### 上传接口
+
+```
+POST /api/upload
+Content-Type: multipart/form-data
+```
+
+| 参数 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| `image` | File | 是 | 主图文件 |
+| `title` | String | 是 | 作品标题 |
+| `prompt` | String | 否 | 提示词 |
+| `author` | String | 否 | 作者名 |
+| `description` | String | 否 | 描述 |
+| `type` | String | 否 | `txt2img` / `img2img` |
+| `category` | String | 否 | `gallery`（默认）/ `template` |
+| `tags` | String | 否 | 逗号分隔的标签 |
+| `ref_images` | File[] | 否 | 参考图（img2img 时使用，可多个） |
+
+**请求示例：**
+
+```bash
+# cURL
+curl -X POST https://your-domain.com/api/upload \
+  -F "image=@photo.jpg" \
+  -F "title=我的作品" \
+  -F "prompt=a beautiful sunset" \
+  -F "tags=风景,日落"
+
+# 带参考图
+curl -X POST https://your-domain.com/api/upload \
+  -F "image=@result.jpg" \
+  -F "title=风格转换" \
+  -F "type=img2img" \
+  -F "ref_images=@ref1.jpg" \
+  -F "ref_images=@ref2.jpg"
+```
+
+**响应示例：**
+
+```json
+{
+  "code": 201,
+  "message": "上传成功，等待审核",
+  "data": {
+    "id": 1,
+    "title": "我的作品",
+    "status": "pending",
+    "file_path": "/static/uploads/xxx.jpg",
+    "tags": ["风景", "日落"],
+    "created_at": "2025-01-12T10:30:00"
+  }
+}
+```
+
+**错误响应：**
+
+```json
+{"code": 400, "message": "缺少主图文件", "data": null}
+{"code": 400, "message": "缺少标题", "data": null}
+{"code": 500, "message": "上传失败: 错误信息", "data": null}
+```
+
