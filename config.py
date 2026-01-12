@@ -1,4 +1,5 @@
 import os
+import secrets
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
 
@@ -9,12 +10,38 @@ instance_path = os.path.join(basedir, 'instance')
 if not os.path.exists(instance_path):
     os.makedirs(instance_path)
 
+
 def str_to_bool(s):
     return str(s).lower() == 'true'
 
+
+def get_or_create_secret_key():
+    """
+    获取或自动生成 SECRET_KEY
+    优先级: 环境变量 > 持久化文件 > 自动生成并保存
+    """
+    # 1. 优先使用环境变量
+    env_key = os.environ.get('SECRET_KEY')
+    if env_key and env_key != 'dev-key-please-change-in-prod':
+        return env_key
+
+    # 2. 尝试从持久化文件读取
+    secret_file = os.path.join(instance_path, '.secret_key')
+    if os.path.exists(secret_file):
+        with open(secret_file, 'r') as f:
+            return f.read().strip()
+
+    # 3. 自动生成并保存
+    new_key = secrets.token_hex(32)
+    with open(secret_file, 'w') as f:
+        f.write(new_key)
+    print("[Config] 已自动生成 SECRET_KEY 并保存到 instance/.secret_key")
+    return new_key
+
+
 class Config:
     """应用全局配置"""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-please-change-in-prod'
+    SECRET_KEY = get_or_create_secret_key()
 
     # =========================================================
     # 数据库智能配置逻辑
@@ -39,7 +66,7 @@ class Config:
         else:
             SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{db_user}@{db_host}:{db_port}/{db_name}?charset=utf8mb4"
             
-        print(f"🔌 [Config] 已启用 MySQL (PyMySQL): {db_host}:{db_port}/{db_name}")
+        print(f"[Config] 已启用 MySQL (PyMySQL): {db_host}:{db_port}/{db_name}")
 
     elif db_type == 'postgresql':
         # === PostgreSQL 模式 ===
@@ -50,7 +77,7 @@ class Config:
         else:
             SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}@{db_host}:{db_port}/{db_name}"
 
-        print(f"🐘 [Config] 已启用 PostgreSQL 数据库: {db_host}:{db_port}/{db_name}")
+        print(f"[Config] 已启用 PostgreSQL 数据库: {db_host}:{db_port}/{db_name}")
 
     else:
         # === SQLite 模式 ===
@@ -61,7 +88,7 @@ class Config:
             SQLALCHEMY_DATABASE_URI = f'sqlite:///{env_sqlite_path}'
         else:
             SQLALCHEMY_DATABASE_URI = f'sqlite:///{default_sqlite_path}'
-        print(f"💾 [Config] 使用 SQLite: {SQLALCHEMY_DATABASE_URI}")
+        print(f"[Config] 使用 SQLite: {SQLALCHEMY_DATABASE_URI}")
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

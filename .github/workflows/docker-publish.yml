@@ -43,7 +43,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:${{ inputs.version }}
+            ${{ env.IMAGE_NAME }}:v${{ inputs.version }}
             ${{ inputs.latest && format('{0}:latest', env.IMAGE_NAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -53,5 +53,5 @@ jobs:
           echo "### Docker Image Published 🐳" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${{ env.IMAGE_NAME }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** \`${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`v${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Latest:** ${{ inputs.latest && '✅ Yes' || '❌ No' }}" >> $GITHUB_STEP_SUMMARY
