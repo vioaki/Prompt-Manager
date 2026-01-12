@@ -11,8 +11,22 @@ import time
 import zipfile
 import io
 import os
+import urllib.request
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
+
+# 版本信息
+VERSION_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'VERSION')
+GITHUB_VERSION_URL = 'https://raw.githubusercontent.com/vioaki/Prompt-Manager/main/VERSION'
+
+
+def get_current_version():
+    """获取当前版本号"""
+    try:
+        with open(VERSION_FILE, 'r') as f:
+            return f.read().strip()
+    except:
+        return 'unknown'
 
 
 @bp.route('/')
@@ -61,6 +75,9 @@ def dashboard():
     rate_limit_settings = ConfigService.get_rate_limit_settings()
     readonly_settings = ConfigService.get_readonly_settings()
 
+    # 获取当前版本
+    current_version = get_current_version()
+
     return render_template('admin.html',
                            pending_images=pending_images,
                            approved_pagination=approved_pagination,
@@ -73,7 +90,8 @@ def dashboard():
                            upload_settings=upload_settings,
                            display_settings=display_settings,
                            rate_limit_settings=rate_limit_settings,
-                           readonly_settings=readonly_settings)
+                           readonly_settings=readonly_settings,
+                           current_version=current_version)
 
 
 @bp.route('/approve/<int:img_id>', methods=['POST'])
@@ -461,3 +479,34 @@ def update_password():
         return jsonify({'status': 'ok', 'message': '密码修改成功'})
     flash('密码修改成功')
     return redirect(url_for('admin.dashboard', tab='data-mgmt'))
+
+
+@bp.route('/check-update', methods=['GET'])
+@login_required
+def check_update():
+    """检查是否有新版本"""
+    current = get_current_version()
+
+    try:
+        req = urllib.request.Request(GITHUB_VERSION_URL, headers={'User-Agent': 'Prompt-Manager'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            latest = response.read().decode('utf-8').strip()
+
+        # 比较版本号
+        def parse_version(v):
+            return tuple(map(int, v.replace('v', '').split('.')))
+
+        has_update = parse_version(latest) > parse_version(current)
+
+        return jsonify({
+            'status': 'ok',
+            'current': current,
+            'latest': latest,
+            'has_update': has_update
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'current': current,
+            'message': f'检查更新失败: {str(e)}'
+        })

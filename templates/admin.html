@@ -497,13 +497,24 @@
                 <!-- 系统信息 (只读) -->
                 <div class="col-12">
                     <div class="glass-panel p-4">
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="dashboard-icon-box bg-secondary bg-opacity-10 text-secondary m-0 me-3" style="width: 48px; height: 48px; font-size: 1.2rem;">
-                                <i class="bi bi-info-circle"></i>
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="dashboard-icon-box bg-secondary bg-opacity-10 text-secondary m-0 me-3" style="width: 48px; height: 48px; font-size: 1.2rem;">
+                                    <i class="bi bi-info-circle"></i>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold mb-0">系统信息</h5>
+                                    <p class="text-secondary small mb-0">以下配置需修改 .env 文件后重启服务</p>
+                                </div>
                             </div>
-                            <div>
-                                <h5 class="fw-bold mb-0">系统信息</h5>
-                                <p class="text-secondary small mb-0">以下配置需修改 .env 文件后重启服务 <span class="badge bg-secondary bg-opacity-25 text-secondary ms-1">需重启</span></p>
+                            <div class="text-end">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="fw-bold" style="color: var(--text-primary);">v{{ current_version }}</span>
+                                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="checkUpdate()" id="btnCheckUpdate">
+                                        <i class="bi bi-arrow-repeat me-1"></i>检查更新
+                                    </button>
+                                </div>
+                                <div id="updateStatus" class="small mt-1"></div>
                             </div>
                         </div>
 
@@ -762,6 +773,38 @@
         document.body.appendChild(toast);
         setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; }, 2000);
         setTimeout(() => toast.remove(), 2500);
+    }
+
+    // 检查更新
+    function checkUpdate() {
+        const btn = document.getElementById('btnCheckUpdate');
+        const status = document.getElementById('updateStatus');
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>检查中...';
+        status.innerHTML = '';
+
+        fetch("{{ url_for('admin.check_update') }}")
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    if (data.has_update) {
+                        status.innerHTML = `<span class="text-warning"><i class="bi bi-exclamation-circle me-1"></i>发现新版本 v${data.latest}</span>
+                            <a href="https://github.com/vioaki/Prompt-Manager" target="_blank" class="ms-2 text-primary">前往更新</a>`;
+                    } else {
+                        status.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>已是最新版本</span>';
+                    }
+                } else {
+                    status.innerHTML = `<span class="text-secondary">${data.message || '检查失败'}</span>`;
+                }
+            })
+            .catch(() => {
+                status.innerHTML = '<span class="text-secondary">网络错误</span>';
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>检查更新';
+            });
     }
 </script>
 
