@@ -5,7 +5,7 @@
 <div class="d-flex w-100" style="min-height: 100vh;">
 
     <div class="d-none d-md-block flex-shrink-0" style="width: 240px; z-index: 100;">
-        <div class="sidebar-sticky custom-scrollbar">
+        <div class="sidebar-sticky custom-scrollbar" style="max-height: calc(100vh - 80px); overflow-y: auto;">
             <div class="px-3 mb-4 mt-2">
                 <h5 class="fw-bold m-0" style="font-family: serif; font-style: italic; letter-spacing: 1px;">Prompt<br>Manager</h5>
             </div>
@@ -15,7 +15,11 @@
                 <i class="bi bi-grid-fill me-3 small"></i>All Photos
             </a>
 
-            <div class="nav-category mt-4">Tags</div>
+            <div class="nav-category mt-4 d-flex justify-content-between align-items-center">
+                <span>Tags</span>
+                <span class="badge bg-secondary bg-opacity-25 rounded-pill small" style="font-size: 0.65rem;">{{ all_tags|length }}</span>
+            </div>
+
             {% for tag in all_tags %}
             <a href="{{ url_for(request.endpoint, tag=tag.name) }}" class="nav-item-apple {{ 'active' if active_tag == tag.name else '' }}">
                 <i class="bi bi-hash me-3 small opacity-50"></i>{{ tag.name }}

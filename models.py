@@ -40,6 +40,45 @@ class SystemSetting(db.Model):
         setting.value = '1' if value else '0'
         db.session.commit()
 
+    @staticmethod
+    def get_str(key, default=''):
+        """获取字符串设置"""
+        setting = db.session.get(SystemSetting, key)
+        if not setting or setting.value is None:
+            return default
+        return setting.value
+
+    @staticmethod
+    def set_str(key, value):
+        """设置字符串值"""
+        setting = db.session.get(SystemSetting, key)
+        if not setting:
+            setting = SystemSetting(key=key)
+            db.session.add(setting)
+        setting.value = str(value) if value is not None else ''
+        db.session.commit()
+
+    @staticmethod
+    def get_int(key, default=0):
+        """获取整数设置"""
+        setting = db.session.get(SystemSetting, key)
+        if not setting or setting.value is None:
+            return default
+        try:
+            return int(setting.value)
+        except (ValueError, TypeError):
+            return default
+
+    @staticmethod
+    def set_int(key, value):
+        """设置整数值"""
+        setting = db.session.get(SystemSetting, key)
+        if not setting:
+            setting = SystemSetting(key=key)
+            db.session.add(setting)
+        setting.value = str(int(value))
+        db.session.commit()
+
 
 class Image(db.Model):
     """核心作品模型"""

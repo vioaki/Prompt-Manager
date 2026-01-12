@@ -14,6 +14,35 @@ ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
 THUMB_SIZE = (400, 400)
 
 
+def get_config_value(key, default):
+    """
+    获取配置值，优先从 ConfigService 读取（热更新），fallback 到 app.config
+    """
+    try:
+        from services.config_service import ConfigService
+        if key == 'IMG_MAX_DIMENSION':
+            return ConfigService.get_img_max_dimension()
+        elif key == 'IMG_QUALITY':
+            return ConfigService.get_img_quality()
+        elif key == 'ENABLE_IMG_COMPRESS':
+            return ConfigService.get_enable_img_compress()
+        elif key == 'MAX_REF_IMAGES':
+            return ConfigService.get_max_ref_images()
+        elif key == 'ITEMS_PER_PAGE':
+            return ConfigService.get_items_per_page()
+        elif key == 'ADMIN_PER_PAGE':
+            return ConfigService.get_admin_per_page()
+        elif key == 'USE_THUMBNAIL_IN_PREVIEW':
+            return ConfigService.get_use_thumbnail_in_preview()
+        elif key == 'UPLOAD_RATE_LIMIT':
+            return ConfigService.get_upload_rate_limit()
+        elif key == 'LOGIN_RATE_LIMIT':
+            return ConfigService.get_login_rate_limit()
+    except Exception:
+        pass
+    return current_app.config.get(key, default)
+
+
 def get_s3_client():
     """
     获取配置好的 S3 客户端。
@@ -95,10 +124,10 @@ def process_image(file_storage, upload_folder):
 
         file_abspath = os.path.join(full_upload_dir, filename)
 
-        # 配置读取
-        max_dim = current_app.config.get('IMG_MAX_DIMENSION', 1600)
-        save_quality = current_app.config.get('IMG_QUALITY', 85)
-        enable_compress = current_app.config.get('ENABLE_IMG_COMPRESS', True)
+        # 配置读取 (使用热更新配置)
+        max_dim = get_config_value('IMG_MAX_DIMENSION', 1600)
+        save_quality = get_config_value('IMG_QUALITY', 85)
+        enable_compress = get_config_value('ENABLE_IMG_COMPRESS', True)
 
         try:
             img = PilImage.open(file_storage)
