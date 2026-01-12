@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request, current_app, url_for, jso
 from flask_login import current_user
 from sqlalchemy.sql.expression import func
 from models import db, Image, Tag, SystemSetting
-from extensions import limiter
+from extensions import limiter, csrf
 from services.image_service import ImageService
 
 bp = Blueprint('public', __name__)
@@ -276,3 +276,64 @@ def stat_copy(img_id):
         img.heat_score = img.views_count * 1 + img.copies_count * 10
         db.session.commit()
     return {'status': 'ok'}
+
+
+@bp.route('/api/upload', methods=['POST'])
+@csrf.exempt
+@limiter.limit(lambda: current_app.config['UPLOAD_RATE_LIMIT'])
+def api_upload():
+    """
+    API 上传接口
+
+    请求方式: POST multipart/form-data
+    参数:
+        - image: 主图文件 (必填)
+        - title: 标题 (必填)
+        - prompt: 提示词
+        - author: 作者
+        - description: 描述
+        - type: txt2img / img2img
+        - category: gallery / template
+        - tags: 逗号分隔的标签
+        - ref_images: 参考图文件列表 (img2img 时使用)
+    """
+    # 验证主图
+    file = request.files.get('image')
+    if not file or not file.filename:
+        return jsonify({'code': 400, 'message': '缺少主图文件', 'data': None}), 400
+
+    # 验证标题
+    title = request.form.get('title', '').strip()
+    if not title:
+        return jsonify({'code': 400, 'message': '缺少标题', 'data': None}), 400
+
+    # 获取分类并决定审核状态
+    category = request.form.get('category', 'gallery')
+    if category == 'template':
+        need_approval = SystemSetting.get_bool('approval_template', default=True)
+    else:
+        category = 'gallery'
+        need_approval = SystemSetting.get_bool('approval_gallery', default=True)
+
+    initial_status = 'pending' if need_approval else 'approved'
+
+    try:
+        form_data = request.form.to_dict()
+        form_data['status'] = initial_status
+        form_data['category'] = category
+
+        new_image = ImageService.create_image(
+            file=file,
+            data=form_data,
+            ref_files=request.files.getlist('ref_images')
+        )
+
+        return jsonify({
+            'code': 201,
+            'message': '上传成功' if initial_status == 'approved' else '上传成功，等待审核',
+            'data': new_image.to_dict()
+        }), 201
+
+    except Exception as e:
+        current_app.logger.error(f"API Upload Error: {e}")
+        return jsonify({'code': 500, 'message': f'上传失败: {str(e)}', 'data': None}), 500
