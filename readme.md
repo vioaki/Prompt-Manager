@@ -68,8 +68,58 @@
 
 ##  安装与启动
 
-本项目基于 Python Flask 开发。
+本项目基于 Python Flask 开发，支持 Docker 和源码两种部署方式。
+
+### Docker 部署（推荐）
+
+#### 快速启动（零配置）
+
+```bash
+docker run -d \
+  --name prompt-manager \
+  -p 5000:5000 \
+  -v ./data:/app/instance \
+  -v ./uploads:/app/static/uploads \
+  vioaki/prompt-manager:latest
+```
+
+启动后访问 `http://localhost:5000`，使用默认账号 `admin` / `123456` 登录，然后在后台修改密码。
+
+#### 使用 Docker Compose
+
+```bash
+# 下载配置文件
+curl -O https://raw.githubusercontent.com/vioaki/Prompt-Manager/main/docker-compose.yml
+
+# 启动
+docker compose up -d
+```
+
+#### 自定义配置
+
+如需使用 MySQL/PostgreSQL 或 S3 存储，创建 `.env` 文件：
+
+```bash
+# 数据库配置（可选，默认 SQLite）
+DB_TYPE=mysql
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=promptmanager
+
+# S3 存储（可选，默认本地存储）
+STORAGE_TYPE=cloud
+S3_ENDPOINT=https://s3.amazonaws.com
+S3_ACCESS_KEY=your_key
+S3_SECRET_KEY=your_secret
+S3_BUCKET=your_bucket
+S3_DOMAIN=https://your-cdn.com
+```
+
+然后在 `docker-compose.yml` 中取消 `env_file: .env` 的注释。
+
 ### 源码部署
+
 #### 1. 克隆项目
 
 ```bash
@@ -77,9 +127,7 @@ git clone https://github.com/vioaki/Prompt-Manager.git
 cd Prompt-Manager
 ````
 
-#### 2\. 创建环境并安装依赖
-
-建议使用虚拟环境以避免依赖冲突。
+#### 2. 创建环境并安装依赖
 
 **Windows:**
 
@@ -97,47 +145,35 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-#### 3\. 初始化配置
-
-首次运行前，请复制示例配置文件并根据需要修改（**建议修改默认的管理员密码**）。
+#### 3. 初始化配置
 
 ```bash
-# 复制配置文件 (请修改默认账号密码) (windows环境使用copy命令)
+# 可选：复制配置文件进行自定义
 cp .env.example .env
 
-# 初始化/升级数据库 (自动创建 data.sqlite 和管理员账户)
+# 初始化数据库
 python manage_db.py
 ```
 
-> **默认管理员账号**: `admin`
-> **默认密码**: 请查看 `.env` 文件中的配置，或在首次运行时进行修改。
+> **默认管理员账号**: `admin` / `123456`
 
-#### 4\. 启动服务
+#### 4. 启动服务
 
-根据您的操作系统选择启动方式：
-
-**Windows (使用 Flask 内置服务器):**
+**Windows:**
 
 ```bash
 flask run --host=0.0.0.0 --port=5000
-# 或者
+# 或
 python app.py
 ```
 
-**Linux / macOS (使用 Gunicorn 高性能服务器):**
+**Linux / macOS (生产环境):**
 
 ```bash
-# 启动 4 个工作进程，适合生产环境
 gunicorn -w 4 -b 0.0.0.0:5000 app:app
 ```
-### docker部署
-#### 1.下载docker-compose.yml与.env.example
-#### 2.将.env.example重命名为.env
-#### 3.根据自己需要修改docker-compose.yml与.env.example中的配置
-#### 4.将docker-compose.yml与.env.example放在同一目录下
-#### 5.在当前目录的终端中输入docker compose up -d并运行
 
-启动后，访问浏览器 `http://localhost:5000` 即可开始使用。
+启动后，访问 `http://localhost:5000` 即可开始使用。
 
 ##  使用指南
 
