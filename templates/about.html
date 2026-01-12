@@ -110,257 +110,264 @@
     </div>
 
     <div class="glass-panel p-4 mb-5 animate-up" style="animation-delay: 0.3s;">
-        <div class="d-flex align-items-center justify-content-between mb-4">
-            <h4 class="fw-bold art-title mb-0" style="font-size: 1.1rem;">开发者接口 (API)</h4>
-        </div>
-
-        <p class="text-secondary mb-4 small">
-            本系统提供高性能 RESTful API，支持智能缓存与无限分页模式。<br>
-            适用于构建第三方客户端、自动化脚本或集成到工作流中。
-        </p>
-
         <div class="mb-4">
-            <h6 class="fw-bold small text-secondary text-uppercase ls-1 mb-2">1. 画廊数据 (Gallery)</h6>
-            <div class="input-glass rounded-3 p-3 d-flex align-items-center shadow-sm">
-                <span class="badge bg-secondary me-3">GET</span>
-                <code class="fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
-                    {{ url_for('public.api_gallery_list', _external=True) }}
-                </code>
-                <button class="btn btn-sm btn-outline-secondary border-0"
-                        onclick="navigator.clipboard.writeText('{{ url_for('public.api_gallery_list', _external=True) }}'); alert('地址已复制')"
-                        title="复制接口地址">
-                    <i class="bi bi-clipboard"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="mb-5">
-            <h6 class="fw-bold small text-secondary text-uppercase ls-1 mb-2">2. 模板数据 (Templates)</h6>
-            <div class="input-glass rounded-3 p-3 d-flex align-items-center shadow-sm">
-                <span class="badge bg-secondary me-3">GET</span>
-                <code class="fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
-                    {{ url_for('public.api_templates_list', _external=True) }}
-                </code>
-                <button class="btn btn-sm btn-outline-secondary border-0"
-                        onclick="navigator.clipboard.writeText('{{ url_for('public.api_templates_list', _external=True) }}'); alert('地址已复制')"
-                        title="复制接口地址">
-                    <i class="bi bi-clipboard"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="mb-5">
-            <h6 class="fw-bold small text-secondary text-uppercase ls-1 mb-2">3. 上传接口 (Upload)</h6>
-            <div class="input-glass rounded-3 p-3 d-flex align-items-center shadow-sm">
-                <span class="badge bg-success me-3">POST</span>
-                <code class="fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
-                    {{ url_for('public.api_upload', _external=True) }}
-                </code>
-                <button class="btn btn-sm btn-outline-secondary border-0"
-                        onclick="navigator.clipboard.writeText('{{ url_for('public.api_upload', _external=True) }}'); alert('地址已复制')"
-                        title="复制接口地址">
-                    <i class="bi bi-clipboard"></i>
-                </button>
-            </div>
-            <p class="text-secondary small mt-2 mb-0 ps-1">
-                <i class="bi bi-info-circle me-1"></i>使用 <code>multipart/form-data</code> 格式提交
+            <h4 class="fw-bold art-title mb-2" style="font-size: 1.1rem;">开发者接口 (API)</h4>
+            <p class="text-secondary small">
+                本系统提供高性能 RESTful API，支持智能缓存与无限分页模式。<br>
+                适用于构建第三方客户端、自动化脚本或集成到工作流中。
             </p>
         </div>
 
-        <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">上传参数 (Upload Parameters)</h6>
-
-        <div class="table-responsive input-glass rounded-3 mb-5 overflow-hidden">
-            <table class="table table-sm small mb-0" style="--bs-table-bg: transparent;">
-                <thead style="background-color: var(--btn-bg);">
-                    <tr>
-                        <th class="ps-3 py-3 border-bottom-0" style="width: 110px; color: var(--text-primary);">参数名</th>
-                        <th class="py-3 border-bottom-0" style="width: 70px; color: var(--text-primary);">类型</th>
-                        <th class="py-3 border-bottom-0" style="width: 50px; color: var(--text-primary);">必填</th>
-                        <th class="py-3 border-bottom-0" style="color: var(--text-primary);">描述</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">image</td>
-                        <td class="py-3" style="color: var(--text-secondary);">File</td>
-                        <td class="py-3"><span class="badge bg-danger bg-opacity-75">是</span></td>
-                        <td class="py-3" style="color: var(--text-secondary);">主图文件 (jpg/png/gif/webp)</td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">title</td>
-                        <td class="py-3" style="color: var(--text-secondary);">String</td>
-                        <td class="py-3"><span class="badge bg-danger bg-opacity-75">是</span></td>
-                        <td class="py-3" style="color: var(--text-secondary);">作品标题</td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">prompt</td>
-                        <td class="py-3" style="color: var(--text-secondary);">String</td>
-                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
-                        <td class="py-3" style="color: var(--text-secondary);">提示词内容</td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">author</td>
-                        <td class="py-3" style="color: var(--text-secondary);">String</td>
-                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
-                        <td class="py-3" style="color: var(--text-secondary);">作者名称，默认"匿名"</td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">description</td>
-                        <td class="py-3" style="color: var(--text-secondary);">String</td>
-                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
-                        <td class="py-3" style="color: var(--text-secondary);">作品描述</td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">type</td>
-                        <td class="py-3" style="color: var(--text-secondary);">String</td>
-                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
-                        <td class="py-3" style="color: var(--text-secondary);"><code>txt2img</code> 或 <code>img2img</code></td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">category</td>
-                        <td class="py-3" style="color: var(--text-secondary);">String</td>
-                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
-                        <td class="py-3" style="color: var(--text-secondary);"><code>gallery</code> (默认) 或 <code>template</code></td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">tags</td>
-                        <td class="py-3" style="color: var(--text-secondary);">String</td>
-                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
-                        <td class="py-3" style="color: var(--text-secondary);">逗号分隔，如 <code>风景,日落</code></td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">ref_images</td>
-                        <td class="py-3" style="color: var(--text-secondary);">File[]</td>
-                        <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
-                        <td class="py-3" style="color: var(--text-secondary);">参考图 (img2img 时使用，可传多个)</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">请求参数 (Query Parameters)</h6>
-
-        <div class="table-responsive input-glass rounded-3 mb-5 overflow-hidden">
-            <table class="table table-sm small mb-0" style="--bs-table-bg: transparent;">
-                <thead style="background-color: var(--btn-bg);">
-                    <tr>
-                        <th class="ps-3 py-3 border-bottom-0" style="width: 100px; color: var(--text-primary);">参数名</th>
-                        <th class="py-3 border-bottom-0" style="width: 70px; color: var(--text-primary);">类型</th>
-                        <th class="py-3 border-bottom-0" style="width: 100px; color: var(--text-primary);">默认值</th>
-                        <th class="py-3 border-bottom-0" style="color: var(--text-primary);">描述与示例</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">per_page</td>
-                        <td class="py-3" style="color: var(--text-secondary);">Int</td>
-                        <td class="py-3" style="color: var(--text-secondary);">500</td>
-                        <td class="py-3" style="color: var(--text-secondary);">
-                            每页数量。支持 <code class="px-1 rounded fw-bold" style="background:var(--btn-bg); color:var(--text-primary);">-1</code> 开启<span class="fw-bold" style="color: var(--text-primary);">无限模式</span>（获取全部，上限 1w）。
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">page</td>
-                        <td class="py-3" style="color: var(--text-secondary);">Int</td>
-                        <td class="py-3" style="color: var(--text-secondary);">1</td>
-                        <td class="py-3" style="color: var(--text-secondary);">分页页码。配合返回元数据中的 <code>meta.next_url</code> 可自动翻页。</td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">q</td>
-                        <td class="py-3" style="color: var(--text-secondary);">String</td>
-                        <td class="py-3" style="color: var(--text-secondary);">Null</td>
-                        <td class="py-3" style="color: var(--text-secondary);">关键词搜索（匹配标题、Prompt或作者）。<br>例: <code>?q=cyberpunk</code></td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">tag</td>
-                        <td class="py-3" style="color: var(--text-secondary);">String</td>
-                        <td class="py-3" style="color: var(--text-secondary);">Null</td>
-                        <td class="py-3" style="color: var(--text-secondary);">标签筛选。<br>例: <code>?tag=二次元</code></td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">sort</td>
-                        <td class="py-3" style="color: var(--text-secondary);">String</td>
-                        <td class="py-3" style="color: var(--text-secondary);">date</td>
-                        <td class="py-3" style="color: var(--text-secondary);">排序方式。可选值: <code>date</code> (最新), <code>hot</code> (热度), <code>random</code> (随机)。</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">⚡️ 高级特性：ETag 缓存校验</h6>
-
-        <div class="input-glass p-4 rounded-3 mb-5 border border-secondary border-opacity-10">
-            <p class="small mb-4" style="color: var(--text-secondary);">
-                为了节省带宽并提高轮询效率，API 实现了标准的 <strong>ETag / 304 Not Modified</strong> 机制。这允许客户端在数据未发生变化时，直接跳过下载过程。
-            </p>
-
-            <div class="d-flex flex-column gap-3">
-                <div class="d-flex gap-3">
-                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.8rem; flex-shrink: 0;">1</div>
-                    <div class="small text-secondary">
-                        <strong style="color: var(--text-primary);">首次请求：</strong> 服务器返回完整数据，并在 Header 中附带一个唯一指纹：<br>
-                        <code class="text-primary mt-1 d-inline-block">ETag: "68b329da9893e34099c7d8ad5cb9c940"</code>
-                    </div>
+        <div class="mb-5 pb-2 border-bottom border-secondary border-opacity-10">
+            <div class="d-flex align-items-center mb-3">
+                <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                    <i class="bi bi-cloud-download-fill"></i>
                 </div>
+                <h5 class="fw-bold mb-0 text-primary">一、数据读取 (Read / GET)</h5>
+            </div>
 
-                <div class="d-flex gap-3">
-                    <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.8rem; flex-shrink: 0;">2</div>
-                    <div class="small text-secondary">
-                        <strong style="color: var(--text-primary);">后续请求：</strong> 客户端在 Header 中发送上次收到的指纹：<br>
-                        <code class="text-primary mt-1 d-inline-block">If-None-Match: "68b329da9893e34099c7d8ad5cb9c940"</code>
-                    </div>
-                </div>
-
-                <div class="d-flex gap-3">
-                    <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.8rem; flex-shrink: 0;">3</div>
-                    <div class="small text-secondary">
-                        <strong style="color: var(--text-primary);">极速响应：</strong> 如果库中数据没有变化（哈希一致），服务器将直接返回 <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">304 Not Modified</span> 状态码，且 <strong>不返回任何数据包体</strong> (Body Length = 0)。
-                    </div>
+            <div class="mb-4 ps-1">
+                <h6 class="fw-bold small text-secondary text-uppercase ls-1 mb-2">1. 画廊数据 (Gallery List)</h6>
+                <div class="input-glass rounded-3 p-3 d-flex align-items-center shadow-sm">
+                    <span class="badge bg-secondary me-3">GET</span>
+                    <code class="fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
+                        {{ url_for('public.api_gallery_list', _external=True) }}
+                    </code>
+                    <button class="btn btn-sm btn-outline-secondary border-0"
+                            onclick="navigator.clipboard.writeText('{{ url_for('public.api_gallery_list', _external=True) }}'); alert('地址已复制')"
+                            title="复制接口地址">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                 </div>
             </div>
-        </div>
 
-        <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">响应示例 (Response Structure)</h6>
-        <div class="bg-dark text-white p-3 rounded-3 shadow-sm position-relative group border border-secondary border-opacity-25">
-            <button class="btn btn-sm btn-dark position-absolute top-0 end-0 m-2 border border-secondary border-opacity-25"
-                    onclick="copyCode(this)" style="font-size: 0.7rem;">Copy JSON</button>
+            <div class="mb-4 ps-1">
+                <h6 class="fw-bold small text-secondary text-uppercase ls-1 mb-2">2. 模板数据 (Templates List)</h6>
+                <div class="input-glass rounded-3 p-3 d-flex align-items-center shadow-sm">
+                    <span class="badge bg-secondary me-3">GET</span>
+                    <code class="fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
+                        {{ url_for('public.api_templates_list', _external=True) }}
+                    </code>
+                    <button class="btn btn-sm btn-outline-secondary border-0"
+                            onclick="navigator.clipboard.writeText('{{ url_for('public.api_templates_list', _external=True) }}'); alert('地址已复制')"
+                            title="复制接口地址">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+            </div>
 
-            <pre class="m-0 custom-scrollbar" style="font-family: 'SF Mono', monospace; font-size: 0.8rem; color: #a5d6ff; max-height: 400px; overflow-y: auto;">{
+            <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1 mt-4">通用筛选参数 (Query Parameters)</h6>
+            <p class="text-secondary x-small mb-2 ps-1">适用于上述 GET 接口</p>
+
+            <div class="table-responsive input-glass rounded-3 mb-5 overflow-hidden">
+                <table class="table table-sm small mb-0" style="--bs-table-bg: transparent;">
+                    <thead style="background-color: var(--btn-bg);">
+                        <tr>
+                            <th class="ps-3 py-3 border-bottom-0" style="width: 100px; color: var(--text-primary);">参数名</th>
+                            <th class="py-3 border-bottom-0" style="width: 70px; color: var(--text-primary);">类型</th>
+                            <th class="py-3 border-bottom-0" style="width: 100px; color: var(--text-primary);">默认值</th>
+                            <th class="py-3 border-bottom-0" style="color: var(--text-primary);">描述与示例</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">per_page</td>
+                            <td class="py-3" style="color: var(--text-secondary);">Int</td>
+                            <td class="py-3" style="color: var(--text-secondary);">500</td>
+                            <td class="py-3" style="color: var(--text-secondary);">
+                                每页数量。支持 <code class="px-1 rounded fw-bold" style="background:var(--btn-bg); color:var(--text-primary);">-1</code> 开启<span class="fw-bold" style="color: var(--text-primary);">无限模式</span>（获取全部，上限 1w）。
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">page</td>
+                            <td class="py-3" style="color: var(--text-secondary);">Int</td>
+                            <td class="py-3" style="color: var(--text-secondary);">1</td>
+                            <td class="py-3" style="color: var(--text-secondary);">分页页码。配合返回元数据中的 <code>meta.next_url</code> 可自动翻页。</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">q</td>
+                            <td class="py-3" style="color: var(--text-secondary);">String</td>
+                            <td class="py-3" style="color: var(--text-secondary);">Null</td>
+                            <td class="py-3" style="color: var(--text-secondary);">关键词搜索（匹配标题、Prompt或作者）。<br>例: <code>?q=cyberpunk</code></td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">tag</td>
+                            <td class="py-3" style="color: var(--text-secondary);">String</td>
+                            <td class="py-3" style="color: var(--text-secondary);">Null</td>
+                            <td class="py-3" style="color: var(--text-secondary);">标签筛选。<br>例: <code>?tag=二次元</code></td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">sort</td>
+                            <td class="py-3" style="color: var(--text-secondary);">String</td>
+                            <td class="py-3" style="color: var(--text-secondary);">date</td>
+                            <td class="py-3" style="color: var(--text-secondary);">排序方式。可选值: <code>date</code> (最新), <code>hot</code> (热度), <code>random</code> (随机)。</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">响应结构 (Response Example)</h6>
+            <div class="bg-dark text-white p-3 rounded-3 shadow-sm position-relative group border border-secondary border-opacity-25 mb-5">
+                <button class="btn btn-sm btn-dark position-absolute top-0 end-0 m-2 border border-secondary border-opacity-25"
+                        onclick="copyCode(this)" style="font-size: 0.7rem;">Copy JSON</button>
+
+                <pre class="m-0 custom-scrollbar" style="font-family: 'SF Mono', monospace; font-size: 0.8rem; color: #a5d6ff; max-height: 400px; overflow-y: auto;">{
   "code": 200,
   "message": "success",
   "meta": {
     "page": 1,
     "per_page": 500,
     "total_items": 1280,
-    "total_pages": 3,
     "has_next": true,
-    "next_url": "https://.../api/gallery?page=2&per_page=500",
+    "next_url": "...",
     "server_timestamp": 1715421000
   },
   "data": [
     {
       "id": 1024,
-      "title": "Only the flowers know Ver.2",
+      "title": "Example Art",
       "author": "vioaki",
       "type": "img2img",
-      "file_path": "https://example.com/static/uploads/uuid.jpg",
-      "thumbnail_path": "https://example.com/static/uploads/uuid_thumb.jpg",
-      "prompt": "This is a masterpiece...",
-      "refs": [
-         {
-           "position": 0,
-           "is_placeholder": false,
-           "file_path": "https://example.com/static/uploads/ref1.jpg"
-         }
-      ],
-      "tags": ["banana", "violet"],
-      "heat_score": 52,
-      "created_at": "2025-12-10T10:00:00"
-    },
-    // ... more items ...
+      "file_path": "/static/...",
+      "prompt": "Masterpiece...",
+      "tags": ["tag1", "tag2"],
+      "created_at": "2025-12-10"
+    }
   ]
 }</pre>
+            </div>
+
+            <div class="input-glass p-4 rounded-3 mb-4 border border-secondary border-opacity-10">
+                <h6 class="fw-bold text-secondary small text-uppercase mb-3">⚡️ 高级特性：ETag 缓存校验</h6>
+                <p class="small mb-4" style="color: var(--text-secondary);">
+                    为了节省带宽并提高轮询效率，API 实现了标准的 <strong>ETag / 304 Not Modified</strong> 机制。这允许客户端在数据未发生变化时，直接跳过下载过程。
+                </p>
+
+                <div class="d-flex flex-column gap-3">
+                    <div class="d-flex gap-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.8rem; flex-shrink: 0;">1</div>
+                        <div class="small text-secondary">
+                            <strong style="color: var(--text-primary);">首次请求：</strong> 服务器返回完整数据，并在 Header 中附带一个唯一指纹：<br>
+                            <code class="text-primary mt-1 d-inline-block">ETag: "68b329da9893e34099c7d8ad5cb9c940"</code>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.8rem; flex-shrink: 0;">2</div>
+                        <div class="small text-secondary">
+                            <strong style="color: var(--text-primary);">后续请求：</strong> 客户端在 Header 中发送上次收到的指纹：<br>
+                            <code class="text-primary mt-1 d-inline-block">If-None-Match: "68b329da9893e34099c7d8ad5cb9c940"</code>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-3">
+                        <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center" style="width: 24px; height: 24px; font-size: 0.8rem; flex-shrink: 0;">3</div>
+                        <div class="small text-secondary">
+                            <strong style="color: var(--text-primary);">极速响应：</strong> 如果库中数据没有变化（哈希一致），服务器将直接返回 <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">304 Not Modified</span> 状态码，且 <strong>不返回任何数据包体</strong> (Body Length = 0)。
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <div>
+            <div class="d-flex align-items-center mb-3 pt-2">
+                <div class="rounded-circle bg-success bg-opacity-10 text-success d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+                    <i class="bi bi-cloud-upload-fill"></i>
+                </div>
+                <h5 class="fw-bold mb-0 text-success">二、数据上传 (Write / POST)</h5>
+            </div>
+
+            <div class="mb-4 ps-1">
+                <h6 class="fw-bold small text-secondary text-uppercase ls-1 mb-2">3. 上传接口 (Upload Endpoint)</h6>
+                <div class="input-glass rounded-3 p-3 d-flex align-items-center shadow-sm">
+                    <span class="badge bg-success me-3">POST</span>
+                    <code class="fw-bold flex-grow-1 text-break" style="font-family: 'SF Mono', monospace; color: var(--text-primary) !important;">
+                        {{ url_for('public.api_upload', _external=True) }}
+                    </code>
+                    <button class="btn btn-sm btn-outline-secondary border-0"
+                            onclick="navigator.clipboard.writeText('{{ url_for('public.api_upload', _external=True) }}'); alert('地址已复制')"
+                            title="复制接口地址">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                <p class="text-secondary small mt-2 mb-0 ps-1">
+                    <i class="bi bi-info-circle me-1"></i>Content-Type 必须为 <code>multipart/form-data</code>
+                </p>
+            </div>
+
+            <h6 class="fw-bold text-secondary small text-uppercase mb-3 ps-1">表单参数 (Form Data)</h6>
+
+            <div class="table-responsive input-glass rounded-3 mb-0 overflow-hidden">
+                <table class="table table-sm small mb-0" style="--bs-table-bg: transparent;">
+                    <thead style="background-color: var(--btn-bg);">
+                        <tr>
+                            <th class="ps-3 py-3 border-bottom-0" style="width: 110px; color: var(--text-primary);">Key</th>
+                            <th class="py-3 border-bottom-0" style="width: 70px; color: var(--text-primary);">Type</th>
+                            <th class="py-3 border-bottom-0" style="width: 50px; color: var(--text-primary);">Req</th>
+                            <th class="py-3 border-bottom-0" style="color: var(--text-primary);">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">image</td>
+                            <td class="py-3" style="color: var(--text-secondary);">File</td>
+                            <td class="py-3"><span class="badge bg-danger bg-opacity-75">是</span></td>
+                            <td class="py-3" style="color: var(--text-secondary);">主图文件 (jpg/png/gif/webp)</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">title</td>
+                            <td class="py-3" style="color: var(--text-secondary);">String</td>
+                            <td class="py-3"><span class="badge bg-danger bg-opacity-75">是</span></td>
+                            <td class="py-3" style="color: var(--text-secondary);">作品标题</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">prompt</td>
+                            <td class="py-3" style="color: var(--text-secondary);">String</td>
+                            <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                            <td class="py-3" style="color: var(--text-secondary);">提示词内容</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">author</td>
+                            <td class="py-3" style="color: var(--text-secondary);">String</td>
+                            <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                            <td class="py-3" style="color: var(--text-secondary);">作者名称，默认"匿名"</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">description</td>
+                            <td class="py-3" style="color: var(--text-secondary);">String</td>
+                            <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                            <td class="py-3" style="color: var(--text-secondary);">作品描述</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">type</td>
+                            <td class="py-3" style="color: var(--text-secondary);">String</td>
+                            <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                            <td class="py-3" style="color: var(--text-secondary);"><code>txt2img</code> 或 <code>img2img</code></td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">category</td>
+                            <td class="py-3" style="color: var(--text-secondary);">String</td>
+                            <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                            <td class="py-3" style="color: var(--text-secondary);"><code>gallery</code> (默认) 或 <code>template</code></td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">tags</td>
+                            <td class="py-3" style="color: var(--text-secondary);">String</td>
+                            <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                            <td class="py-3" style="color: var(--text-secondary);">逗号分隔，如 <code>风景,日落</code></td>
+                        </tr>
+                        <tr>
+                            <td class="ps-3 py-3 font-monospace fw-bold" style="color: var(--text-primary);">ref_images</td>
+                            <td class="py-3" style="color: var(--text-secondary);">File[]</td>
+                            <td class="py-3"><span class="badge bg-secondary bg-opacity-50">否</span></td>
+                            <td class="py-3" style="color: var(--text-secondary);">参考图 (img2img 时使用，可传多个)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 </div>
 
