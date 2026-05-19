@@ -31,18 +31,18 @@
 
     <div class="mb-5 animate-up" style="animation-delay: 0.1s;">
         <label class="form-label-apple">
-            主作品图 <span class="label-badge required">必填</span>
+            主作品 <span class="label-badge required">必填</span>
         </label>
         <div class="position-relative rounded-4 text-center overflow-hidden upload-zone shadow-sm transition-all"
              style="min-height: 360px; background: var(--sidebar-bg);">
-            <input class="position-absolute top-0 start-0 w-100 h-100 opacity-0" type="file" id="mainImageInput" name="{{ 'new_image' if mode == 'edit' else 'image' }}" accept="image/*" {{ 'required' if mode == 'create' else '' }}>
+            <input class="position-absolute top-0 start-0 w-100 h-100 opacity-0" type="file" id="mainImageInput" name="{{ 'new_image' if mode == 'edit' else 'image' }}" accept="image/*,video/*" {{ 'required' if mode == 'create' else '' }}>
 
             <div id="mainPlaceholder" class="py-5 d-flex flex-column align-items-center justify-content-center h-100 pointer-events-none {{ 'd-none' if image else '' }}">
                 <div class="mb-4 upload-icon-circle">
                     <i class="bi bi-cloud-arrow-up-fill"></i>
                 </div>
                 <div class="fw-bold fs-5 mb-1" style="color: var(--text-primary);">拖拽或点击上传</div>
-                <div class="text-secondary small opacity-75">支持 JPG, PNG, WEBP (Max 20MB)</div>
+                <div class="text-secondary small opacity-75">支持 JPG, PNG, WEBP, GIF, MP4, WEBM, MOV</div>
             </div>
 
             <img id="mainPreview" src="{{ image.file_path if image else '' }}"

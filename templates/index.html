@@ -79,20 +79,29 @@
                 {% for img in images %}
                 <div class="gallery-item group">
                     <div class="art-frame cursor-zoom" onclick="showDetail(this)">
+                        {% set file_path_lower = (img.file_path or '') | lower %}
+                        {% set is_video = file_path_lower.endswith('.mp4') or file_path_lower.endswith('.webm') or file_path_lower.endswith('.ogg') or file_path_lower.endswith('.mov') or file_path_lower.endswith('.m4v') %}
 
                         <script type="application/json" class="img-data">
                             {{ img.to_dict() | tojson | safe }}
                         </script>
 
-                        {% if config.USE_THUMBNAIL_IN_PREVIEW %}
-                            <img src="{{ img.thumbnail_path or img.file_path }}" alt="{{ img.title }}" loading="lazy" onload="this.classList.add('reveal')">
+                        {% if is_video %}
+                            <video src="{{ img.file_path }}"
+                                   {% if img.thumbnail_path %}poster="{{ img.thumbnail_path }}"{% endif %}
+                                   muted autoplay loop playsinline preload="metadata"
+                                   style="display:block;width:100%;height:auto;"></video>
                         {% else %}
-                            <img src="{{ img.file_path }}" alt="{{ img.title }}" loading="lazy" onload="this.classList.add('reveal')">
+                            {% if config.USE_THUMBNAIL_IN_PREVIEW %}
+                                <img src="{{ img.thumbnail_path or img.file_path }}" alt="{{ img.title }}" loading="lazy" onload="this.classList.add('reveal')">
+                            {% else %}
+                                <img src="{{ img.file_path }}" alt="{{ img.title }}" loading="lazy" onload="this.classList.add('reveal')">
+                            {% endif %}
                         {% endif %}
 
                         <span class="position-absolute top-0 end-0 m-2 badge bg-black bg-opacity-25 backdrop-blur rounded-1 fw-normal"
                               style="font-size: 0.6rem; padding: 3px 6px;">
-                            {{ 'T2I' if img.type == 'txt2img' else 'I2I' }}
+                            {{ 'VID' if is_video else ('T2I' if img.type == 'txt2img' else 'I2I') }}
                         </span>
                     </div>
 
@@ -192,6 +201,7 @@
                     <div class="col-lg-8 d-flex align-items-center justify-content-center position-relative h-100" style="background: black;">
                         <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-4 p-2 bg-dark bg-opacity-50 rounded-circle" data-bs-dismiss="modal" style="z-index: 10;"></button>
                         <img id="modalImg" src="" class="img-fluid" style="max-height: 95%; max-width: 95%; object-fit: contain;">
+                        <video id="modalVideo" class="d-none" controls playsinline style="max-height: 95%; max-width: 95%; object-fit: contain;"></video>
                     </div>
 
                     <div class="col-lg-4 d-flex flex-column border-start border-secondary border-opacity-10 h-100" style="background-color: var(--modal-bg); overflow: hidden;">

@@ -18,7 +18,22 @@ window.showDetail = function(el) {
 
         // 1. 基础信息渲染
         const modalImg = document.getElementById('modalImg');
-        modalImg.src = data.file_path;
+        const modalVideo = document.getElementById('modalVideo');
+        const isVideo = /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(data.file_path || '');
+
+        if (isVideo) {
+            modalImg.classList.add('d-none');
+            modalImg.src = '';
+            modalVideo.src = data.file_path;
+            modalVideo.classList.remove('d-none');
+            modalVideo.load();
+        } else {
+            modalVideo.pause();
+            modalVideo.src = '';
+            modalVideo.classList.add('d-none');
+            modalImg.src = data.file_path;
+            modalImg.classList.remove('d-none');
+        }
         document.getElementById('modalTitle').innerText = data.title;
         document.getElementById('modalAuthor').innerText = data.author ? 'by ' + data.author : '';
 
@@ -47,7 +62,7 @@ window.showDetail = function(el) {
             });
             promptContainer.innerHTML = highlightedHtml;
 
-            // B. 生成 iOS 风格的变量输入列表
+            // B. 生成变量输入列表
             varsContainer.innerHTML = '';
             const uniqueVars = new Set();
 
@@ -77,7 +92,7 @@ window.showDetail = function(el) {
             varsSection.classList.add('d-none');
         }
 
-        // 3. 重置复制按钮状态 (防止上次的 "Copied" 状态残留)
+        // 3. 重置复制按钮状态
         const btn = document.getElementById('btnCopyPrompt');
         if(btn) {
             btn.innerHTML = '<i class="bi bi-clipboard me-1"></i> <span>Copy</span>';
