@@ -10,8 +10,53 @@ try:
 except ImportError:
     boto3 = None
 
-ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
+VIDEO_EXTENSIONS = {'.mp4', '.webm', '.ogg', '.mov', '.m4v'}
+# 向后兼容别名
+ALLOWED_EXTENSIONS = IMAGE_EXTENSIONS
+
+IMAGE_CONTENT_TYPES = {
+    '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+    '.gif': 'image/gif', '.webp': 'image/webp', '.bmp': 'image/bmp',
+}
+VIDEO_CONTENT_TYPES = {
+    '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime',
+    '.m4v': 'video/x-m4v', '.ogg': 'video/ogg',
+}
+
 THUMB_SIZE = (400, 400)
+
+
+def _resolve_upload_dir(upload_folder):
+    """将配置的 upload_folder 解析为绝对目录并确保存在。"""
+    if not os.path.isabs(upload_folder):
+        full_dir = os.path.join(current_app.root_path, upload_folder)
+    else:
+        full_dir = upload_folder
+    os.makedirs(full_dir, exist_ok=True)
+    return full_dir
+
+
+def _web_path(upload_folder, filename):
+    """生成本地文件对外暴露的 web 路径。"""
+    return f"/{upload_folder}/{filename}".replace('//', '/')
+
+
+def _save_thumbnail_from_pil(img, thumb_abspath):
+    """从已打开的 PIL Image 生成并保存 400x400 缩略图 (JPEG)。"""
+    thumb = img.copy()
+    if thumb.mode in ('RGBA', 'P'):
+        thumb = thumb.convert('RGB')
+    thumb.thumbnail(THUMB_SIZE)
+    thumb.save(thumb_abspath, quality=90, optimize=True)
+
+
+def _s3_domain():
+    """读取并规范化 S3 访问域名，未配置时报错。"""
+    domain = (current_app.config.get('S3_DOMAIN') or '').strip().rstrip('/')
+    if not domain:
+        raise RuntimeError("云存储模式需要配置 S3_DOMAIN")
+    return domain
 
 
 def get_config_value(key, default):
@@ -58,14 +103,15 @@ def get_s3_client():
     )
 
 
-def process_image(file_storage, upload_folder):
+def process_image(file_storage, upload_folder, ext=None):
     """
-    处理上传图片：保存原图并生成缩略图。
-    支持自动压缩和 GIF 处理。
+    处理上传图片：保存原图并生成缩略图，支持自动压缩和 GIF 处理。
+    扩展名应由上游 (media_service) 校验；非图片扩展名会回退为 .jpg。
+    返回 (web_original, web_thumb)。
     """
-    filename = file_storage.filename
-    ext = os.path.splitext(filename)[1].lower() if filename else ''
-    if ext not in ALLOWED_EXTENSIONS:
+    filename_in = file_storage.filename
+    ext = (ext or os.path.splitext(filename_in)[1].lower()) if (ext or filename_in) else ''
+    if ext not in IMAGE_EXTENSIONS:
         ext = '.jpg'
 
     unique_name = uuid.uuid4().hex
@@ -76,35 +122,20 @@ def process_image(file_storage, upload_folder):
         try:
             s3 = get_s3_client()
             bucket_name = current_app.config.get('S3_BUCKET')
-            domain = current_app.config.get('S3_DOMAIN').rstrip('/')
+            domain = _s3_domain()
 
-            # 智能判断 Content-Type (确保浏览器预览)
-            content_type = file_storage.content_type
-            if not content_type:
-                if ext in ['.jpg', '.jpeg']: content_type = 'image/jpeg'
-                elif ext == '.png': content_type = 'image/png'
-                elif ext == '.gif': content_type = 'image/gif'
-                elif ext == '.webp': content_type = 'image/webp'
-                else: content_type = 'application/octet-stream'
+            content_type = file_storage.content_type or IMAGE_CONTENT_TYPES.get(ext, 'application/octet-stream')
 
-            # 流式上传原图
             s3.upload_fileobj(
                 file_storage,
                 bucket_name,
                 filename,
-                ExtraArgs={
-                    'ContentType': content_type
-                    # 如果需要强制文件公开读，可取消下一行的注释
-                    # 'ACL': 'public-read' 
-                }
+                ExtraArgs={'ContentType': content_type}
             )
 
             web_original = f"{domain}/{filename}"
-            
-            # 拼接缩略图后缀
             thumb_suffix = current_app.config.get('S3_THUMB_SUFFIX') or ''
             web_thumb = f"{web_original}{thumb_suffix}"
-
             return web_original, web_thumb
 
         except Exception as e:
@@ -112,59 +143,97 @@ def process_image(file_storage, upload_folder):
             raise e
 
     # === 分支 B：本地文件存储模式 ===
-    else:
-        # 路径处理
-        if not os.path.isabs(upload_folder):
-            full_upload_dir = os.path.join(current_app.root_path, upload_folder)
+    full_upload_dir = _resolve_upload_dir(upload_folder)
+    file_abspath = os.path.join(full_upload_dir, filename)
+
+    max_dim = get_config_value('IMG_MAX_DIMENSION', 1600)
+    save_quality = get_config_value('IMG_QUALITY', 85)
+    enable_compress = get_config_value('ENABLE_IMG_COMPRESS', True)
+
+    try:
+        img = PilImage.open(file_storage)
+
+        # GIF 特殊处理：保留帧，原图即缩略图
+        if img.format == 'GIF':
+            img.save(file_abspath, save_all=True, optimize=True)
+            web_path = _web_path(upload_folder, filename)
+            return web_path, web_path
+
+        thumb_filename = f"{unique_name}_thumb.jpg"
+        thumb_abspath = os.path.join(full_upload_dir, thumb_filename)
+        _save_thumbnail_from_pil(img, thumb_abspath)
+
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+
+        if enable_compress:
+            if img.width > max_dim or img.height > max_dim:
+                img.thumbnail((max_dim, max_dim), PilImage.Resampling.LANCZOS)
+            img.save(file_abspath, quality=save_quality, optimize=True)
         else:
-            full_upload_dir = upload_folder
+            img.save(file_abspath, quality=100, optimize=False)
 
-        if not os.path.exists(full_upload_dir):
-            os.makedirs(full_upload_dir)
+        return _web_path(upload_folder, filename), _web_path(upload_folder, thumb_filename)
 
-        file_abspath = os.path.join(full_upload_dir, filename)
+    except Exception as e:
+        current_app.logger.error(f"Image processing error: {e}")
+        raise e
 
-        # 配置读取 (使用热更新配置)
-        max_dim = get_config_value('IMG_MAX_DIMENSION', 1600)
-        save_quality = get_config_value('IMG_QUALITY', 85)
-        enable_compress = get_config_value('ENABLE_IMG_COMPRESS', True)
 
+def save_video(file_storage, upload_folder, ext, poster_file=None):
+    """
+    保存上传的视频：不经过 PIL，原样落地；可选地从 poster_file 生成封面缩略图。
+    返回 (web_original, web_thumb|None)。
+    """
+    unique_name = uuid.uuid4().hex
+    filename = f"{unique_name}{ext}"
+
+    # === 分支 A：S3 云存储 ===
+    if current_app.config.get('STORAGE_TYPE') == 'cloud':
+        s3 = get_s3_client()
+        bucket_name = current_app.config.get('S3_BUCKET')
+        domain = _s3_domain()
+        content_type = file_storage.content_type or VIDEO_CONTENT_TYPES.get(ext, 'application/octet-stream')
+        s3.upload_fileobj(file_storage, bucket_name, filename, ExtraArgs={'ContentType': content_type})
+        web_original = f"{domain}/{filename}"
+
+        web_thumb = None
+        if poster_file and getattr(poster_file, 'filename', ''):
+            try:
+                thumb_name = f"{unique_name}_thumb.jpg"
+                poster_img = PilImage.open(poster_file)
+                if poster_img.mode in ('RGBA', 'P'):
+                    poster_img = poster_img.convert('RGB')
+                poster_img.thumbnail(THUMB_SIZE)
+                import io
+                buf = io.BytesIO()
+                poster_img.save(buf, format='JPEG', quality=90, optimize=True)
+                buf.seek(0)
+                s3.upload_fileobj(buf, bucket_name, thumb_name, ExtraArgs={'ContentType': 'image/jpeg'})
+                web_thumb = f"{domain}/{thumb_name}"
+            except Exception as e:
+                current_app.logger.error(f"Video poster (S3) error: {e}")
+                web_thumb = None
+        return web_original, web_thumb
+
+    # === 分支 B：本地存储 ===
+    full_upload_dir = _resolve_upload_dir(upload_folder)
+    file_storage.save(os.path.join(full_upload_dir, filename))
+    web_original = _web_path(upload_folder, filename)
+
+    web_thumb = None
+    if poster_file and getattr(poster_file, 'filename', ''):
         try:
-            img = PilImage.open(file_storage)
-
-            # GIF 特殊处理：保留帧
-            if img.format == 'GIF':
-                img.save(file_abspath, save_all=True, optimize=True)
-                web_path = f"/{upload_folder}/{filename}".replace('//', '/')
-                return web_path, web_path
-
-            # 生成缩略图
             thumb_filename = f"{unique_name}_thumb.jpg"
             thumb_abspath = os.path.join(full_upload_dir, thumb_filename)
-
-            if img.mode in ('RGBA', 'P'):
-                img = img.convert('RGB')
-
-            img_thumb = img.copy()
-            img_thumb.thumbnail(THUMB_SIZE)
-            img_thumb.save(thumb_abspath, quality=90, optimize=True)
-
-            # 保存主图
-            if enable_compress:
-                if img.width > max_dim or img.height > max_dim:
-                    img.thumbnail((max_dim, max_dim), PilImage.Resampling.LANCZOS)
-                img.save(file_abspath, quality=save_quality, optimize=True)
-            else:
-                img.save(file_abspath, quality=100, optimize=False)
-
-            web_original = f"/{upload_folder}/{filename}".replace('//', '/')
-            web_thumb = f"/{upload_folder}/{thumb_filename}".replace('//', '/')
-
-            return web_original, web_thumb
-
+            poster_img = PilImage.open(poster_file)
+            _save_thumbnail_from_pil(poster_img, thumb_abspath)
+            web_thumb = _web_path(upload_folder, thumb_filename)
         except Exception as e:
-            current_app.logger.error(f"Image processing error: {e}")
-            raise e
+            current_app.logger.error(f"Video poster error: {e}")
+            web_thumb = None
+
+    return web_original, web_thumb
 
 
 def remove_physical_file(web_path):
@@ -199,9 +268,12 @@ def remove_physical_file(web_path):
             return
 
         clean_path = web_path.lstrip('/')
-        full_path = os.path.join(current_app.root_path, clean_path)
+        root = os.path.realpath(current_app.root_path)
+        full_path = os.path.realpath(os.path.join(root, clean_path))
 
-        if '..' in clean_path:
+        # 路径穿越防护：解析后的绝对路径必须仍在项目根目录内
+        if not (full_path == root or full_path.startswith(root + os.sep)):
+            current_app.logger.warning(f"Refused to delete out-of-root path: {web_path}")
             return
 
         if os.path.exists(full_path):

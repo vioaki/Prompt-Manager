@@ -1,11 +1,11 @@
 import os
 import json
 import zipfile
-import time
 from werkzeug.utils import secure_filename
 from flask import current_app
 from extensions import db
 from models import Image, Tag, ReferenceImage
+from services.media_service import infer_media_type
 
 
 class DataService:
@@ -58,6 +58,7 @@ class DataService:
                                 dst.write(src.read())
 
                         web_folder = current_app.config['UPLOAD_FOLDER']
+                        local_file_path = f"/{web_folder}/{safe_name}"
                         img = Image(
                             title=item['title'],
                             author=item.get('author', ''),
@@ -65,8 +66,9 @@ class DataService:
                             description=item.get('description', ''),
                             type=item.get('type', 'txt2img'),
                             category=item.get('category', 'gallery'),  # 读取分类
-                            file_path=f"/{web_folder}/{safe_name}",
+                            file_path=local_file_path,
                             thumbnail_path=f"/{web_folder}/{safe_thumb}" if safe_thumb else None,
+                            media_type=item.get('media_type') or infer_media_type(local_file_path),
                             status='pending',  # 导入后默认为待审核，需管理员确认
                             heat_score=item.get('heat_score', 0)
                         )
@@ -114,9 +116,6 @@ class DataService:
                         db.session.rollback()
                         stats['errors'] += 1
                         yield f"❌ {str(e)}\n"
-
-                    # 避免阻塞 IO
-                    time.sleep(0.01)
 
         except Exception as e:
             yield f"\n❌ ZIP 读取失败: {str(e)}\n"

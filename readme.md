@@ -16,6 +16,7 @@
 * **沉浸式画廊**
     * 采用瀑布流布局，视觉体验流畅。
     * 支持高性能图片加载与自动生成缩略图。
+    * 支持图片、GIF 与视频（MP4/WebM 等）上传；视频在列表页以封面图 + 播放角标轻量展示，点击进入详情播放。
     * 提供文生图（Txt2Img）与图生图（Img2Img）分类展示。
     * 内置深色模式与浅色模式，可一键切换。
 
@@ -125,7 +126,7 @@ S3_DOMAIN=https://your-cdn.com
 ```bash
 git clone https://github.com/vioaki/Prompt-Manager.git
 cd Prompt-Manager
-````
+```
 
 #### 2. 创建环境并安装依赖
 
@@ -222,9 +223,11 @@ POST /api/upload
 Content-Type: multipart/form-data
 ```
 
+> **鉴权**：默认开放且免 CSRF，便于自动化脚本调用。如在 `.env` 中设置了 `API_UPLOAD_TOKEN`，则每次请求须携带 `Authorization: Bearer <token>` 或 `X-API-Token: <token>`，否则返回 `401`。生产环境建议配置该 token。
+
 | 参数 | 类型 | 必填 | 描述 |
 |------|------|------|------|
-| `image` | File | 是 | 主图文件 |
+| `image` | File | 是 | 主图/视频文件（图片、GIF、MP4/WebM 等） |
 | `title` | String | 是 | 作品标题 |
 | `prompt` | String | 否 | 提示词 |
 | `author` | String | 否 | 作者名 |
@@ -233,6 +236,9 @@ Content-Type: multipart/form-data
 | `category` | String | 否 | `gallery`（默认）/ `template` |
 | `tags` | String | 否 | 逗号分隔的标签 |
 | `ref_images` | File[] | 否 | 参考图（img2img 时使用，可多个） |
+| `video_poster` | File | 否 | 视频封面图；缺省时画廊以占位图展示 |
+
+> **文件限制**：图片默认上限 `MAX_IMAGE_SIZE_MB`(20MB)，视频默认上限 `MAX_VIDEO_SIZE_MB`(200MB)，均可在 `.env` 中调整。非白名单扩展名将被拒绝（返回 `400`），不再静默改存为 `.jpg`。
 
 **请求示例：**
 
@@ -264,6 +270,7 @@ curl -X POST https://your-domain.com/api/upload \
     "title": "我的作品",
     "status": "pending",
     "file_path": "/static/uploads/xxx.jpg",
+    "media_type": "image",
     "tags": ["风景", "日落"],
     "created_at": "2025-01-12T10:30:00"
   }
@@ -275,6 +282,9 @@ curl -X POST https://your-domain.com/api/upload \
 ```json
 {"code": 400, "message": "缺少主图文件", "data": null}
 {"code": 400, "message": "缺少标题", "data": null}
+{"code": 400, "message": "上传失败: 不支持的文件类型: .exe", "data": null}
+{"code": 401, "message": "未授权：缺少或错误的 API 令牌", "data": null}
+{"code": 413, "message": "上传内容过大", "data": null}
 {"code": 500, "message": "上传失败: 错误信息", "data": null}
 ```
 

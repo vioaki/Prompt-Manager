@@ -71,7 +71,16 @@
                     <div class="col">
                         <div class="pending-gallery-card">
                             <div class="pending-img-zone">
+                                {% if img.media_type == 'video' %}
+                                    {% if img.thumbnail_path %}
+                                    <img src="{{ img.thumbnail_path }}" loading="lazy">
+                                    {% else %}
+                                    <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-dark text-white-50"><i class="bi bi-film fs-1"></i></div>
+                                    {% endif %}
+                                    <div class="position-absolute top-50 start-50 translate-middle text-white" style="font-size: 2.5rem; text-shadow: 0 2px 8px rgba(0,0,0,0.5); pointer-events: none;"><i class="bi bi-play-circle-fill"></i></div>
+                                {% else %}
                                 <img src="{{ img.thumbnail_path or img.file_path }}" loading="lazy">
+                                {% endif %}
                                 <div class="position-absolute top-0 start-0 m-3">
                                     <span class="badge bg-warning text-dark bg-opacity-75 backdrop-blur shadow-sm border border-white border-opacity-25">
                                         Pending
@@ -152,7 +161,16 @@
                 {% for img in approved_pagination.items %}
                 <div class="admin-card-row">
                     <a href="{{ url_for('admin.edit_image', img_id=img.id, next=request.full_path) }}" class="flex-shrink-0 position-relative group">
+                        {% if img.media_type == 'video' %}
+                            {% if img.thumbnail_path %}
+                            <img src="{{ img.thumbnail_path }}" class="admin-thumb">
+                            {% else %}
+                            <div class="admin-thumb d-flex align-items-center justify-content-center bg-dark text-white-50"><i class="bi bi-film fs-4"></i></div>
+                            {% endif %}
+                            <span class="position-absolute top-50 start-50 translate-middle text-white" style="text-shadow: 0 1px 4px rgba(0,0,0,0.6); pointer-events: none;"><i class="bi bi-play-circle-fill"></i></span>
+                        {% else %}
                         <img src="{{ img.thumbnail_path or img.file_path }}" class="admin-thumb">
+                        {% endif %}
                         {% if img.type == 'img2img' %}
                         <span class="position-absolute bottom-0 end-0 badge bg-black bg-opacity-50 border border-white border-opacity-25 rounded-pill m-1" style="font-size: 0.5rem;">I2I</span>
                         {% endif %}

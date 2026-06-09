@@ -25,8 +25,16 @@ def get_current_version():
     try:
         with open(VERSION_FILE, 'r') as f:
             return f.read().strip()
-    except:
+    except Exception:
         return 'unknown'
+
+
+def _is_safe_redirect(target):
+    """仅允许跳转到本站相对路径，防止开放重定向。"""
+    if not target:
+        return False
+    # 拒绝绝对 URL 与协议相对 URL (//evil.com)
+    return target.startswith('/') and not target.startswith('//')
 
 
 @bp.route('/')
@@ -137,7 +145,7 @@ def delete(img_id):
 
     # 优先从表单获取 next，再从 URL 参数获取
     next_url = request.form.get('next') or request.args.get('next')
-    if next_url:
+    if next_url and _is_safe_redirect(next_url):
         return redirect(next_url)
     return redirect(url_for('admin.dashboard'))
 
@@ -160,14 +168,18 @@ def edit_image(img_id):
                 data=request.form,
                 new_main_file=request.files.get('new_image'),
                 new_ref_files=request.files.getlist('add_refs'),
-                deleted_ref_ids=deleted_ids_list
+                deleted_ref_ids=deleted_ids_list,
+                poster_file=request.files.get('video_poster')
             )
             flash('修改保存成功')
+        except ValueError as e:
+            flash(f'保存失败: {e}')
         except Exception as e:
             flash(f'保存失败: {e}')
 
         next_url = request.form.get('next')
-        if next_url: return redirect(next_url)
+        if next_url and _is_safe_redirect(next_url):
+            return redirect(next_url)
         return redirect(url_for('admin.dashboard', tab='approved' if img.status == 'approved' else 'pending'))
 
     next_url = request.args.get('next')

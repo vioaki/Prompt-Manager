@@ -1,7 +1,6 @@
 from flask_login import UserMixin
 from datetime import datetime
 from extensions import db
-from flask import request
 
 image_tags = db.Table('image_tags',
                       db.Column('image_id', db.Integer, db.ForeignKey('image.id')),
@@ -87,11 +86,12 @@ class Image(db.Model):
     author = db.Column(db.String(50), default='匿名')
     file_path = db.Column(db.String(255), nullable=False)
     thumbnail_path = db.Column(db.String(255))
+    media_type = db.Column(db.String(10), default='image')  # image / video / gif
     prompt = db.Column(db.Text)
     description = db.Column(db.Text)
     type = db.Column(db.String(50))  # txt2img / img2img
     status = db.Column(db.String(20), default='pending', index=True)
-    created_at = db.Column(db.DateTime, default=datetime.now)
+    created_at = db.Column(db.DateTime, default=datetime.now, index=True)
 
     # 作品分类: gallery / template
     category = db.Column(db.String(20), default='gallery', index=True)
@@ -106,17 +106,22 @@ class Image(db.Model):
     refs = db.relationship('ReferenceImage', backref='image', cascade="all, delete-orphan",
                            order_by="ReferenceImage.position")
 
-    def to_dict(self):
-        """序列化为字典，用于 API 或导出"""
+    def to_dict(self, base_url=''):
+        """序列化为字典，用于 API 或导出。
+
+        :param base_url: 用于将本地相对路径拼成绝对 URL 的站点根 (如 request.url_root)。
+                         留空则返回原始相对路径，使模型可在请求上下文外/测试中调用。
+        """
+        from services.media_service import infer_media_type
+
+        prefix = base_url.rstrip('/') if base_url else ''
 
         def _get_full_url(path):
-            """辅助函数：确保返回的是带域名的完整 URL"""
             if not path:
                 return None
             if path.startswith(('http://', 'https://')):
                 return path
-            # 本地路径，拼接当前请求的域名
-            return request.url_root.rstrip('/') + path
+            return f"{prefix}{path}" if prefix else path
 
         # 构造参考图列表
         refs_data = []
@@ -142,6 +147,7 @@ class Image(db.Model):
             "description": self.description,
             "type": self.type,
             "category": self.category,
+            "media_type": self.media_type or infer_media_type(self.file_path),
 
             # 主图和缩略图都处理成绝对路径
             "file_path": _get_full_url(self.file_path),

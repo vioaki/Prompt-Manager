@@ -112,6 +112,19 @@ class Config:
     USE_LOCAL_RESOURCES = str_to_bool(os.environ.get('USE_LOCAL_RESOURCES', 'True'))
     ALLOW_PUBLIC_SENSITIVE_TOGGLE = str_to_bool(os.environ.get('ALLOW_PUBLIC_SENSITIVE_TOGGLE', 'True'))
 
+    # =========================================================
+    # 上传体积与安全限制
+    # =========================================================
+    # 单个文件大小上限 (MB)，按媒体类型在应用层精确校验
+    MAX_IMAGE_SIZE_MB = int(os.environ.get('MAX_IMAGE_SIZE_MB') or 20)
+    MAX_VIDEO_SIZE_MB = int(os.environ.get('MAX_VIDEO_SIZE_MB') or 200)
+    # 请求级全局粗闸：取较大者 + 10MB 余量（用于多参考图等场景）
+    MAX_CONTENT_LENGTH = (max(MAX_IMAGE_SIZE_MB, MAX_VIDEO_SIZE_MB) + 10) * 1024 * 1024
+    # Pillow 解压炸弹防护：单张图片最大像素数
+    MAX_IMAGE_PIXELS = int(os.environ.get('MAX_IMAGE_PIXELS') or 50_000_000)
+    # 公开上传接口 /api/upload 的可选鉴权令牌，留空则不校验（向后兼容）
+    API_UPLOAD_TOKEN = os.environ.get('API_UPLOAD_TOKEN') or ''
+
     STORAGE_TYPE = os.environ.get('STORAGE_TYPE') or 'local'
     S3_ENDPOINT = os.environ.get('S3_ENDPOINT')
     S3_ACCESS_KEY = os.environ.get('S3_ACCESS_KEY')

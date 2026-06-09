@@ -2,7 +2,7 @@
       data-mode="{{ mode }}"
       {% if image %}
       data-existing-tags='{{ image.tags | map(attribute="name") | list | tojson }}'
-      data-existing-refs='{{ image.to_dict().refs | tojson }}'
+      data-existing-refs='{{ image.to_dict(request.url_root).refs | tojson }}'
       {% endif %}
 >
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -35,7 +35,12 @@
         </label>
         <div class="position-relative rounded-4 text-center overflow-hidden upload-zone shadow-sm transition-all"
              style="min-height: 360px; background: var(--sidebar-bg);">
-            <input class="position-absolute top-0 start-0 w-100 h-100 opacity-0" type="file" id="mainImageInput" name="{{ 'new_image' if mode == 'edit' else 'image' }}" accept="image/*,video/*" {{ 'required' if mode == 'create' else '' }}>
+            <input class="position-absolute top-0 start-0 w-100 h-100 opacity-0" type="file" id="mainImageInput" name="{{ 'new_image' if mode == 'edit' else 'image' }}" accept=".jpg,.jpeg,.png,.gif,.webp,.bmp,.mp4,.webm,.ogg,.mov,.m4v" {{ 'required' if mode == 'create' else '' }}>
+            <input type="file" id="posterInput" name="video_poster" class="d-none">
+
+            <button type="button" id="btnChangeMedia" class="btn-change-media" title="更换主作品">
+                <i class="bi bi-arrow-repeat"></i>更换
+            </button>
 
             <div id="mainPlaceholder" class="py-5 d-flex flex-column align-items-center justify-content-center h-100 pointer-events-none {{ 'd-none' if image else '' }}">
                 <div class="mb-4 upload-icon-circle">
@@ -45,9 +50,13 @@
                 <div class="text-secondary small opacity-75">支持 JPG, PNG, WEBP, GIF, MP4, WEBM, MOV</div>
             </div>
 
-            <img id="mainPreview" src="{{ image.file_path if image else '' }}"
-                 class="img-fluid w-100 h-100 object-fit-contain position-absolute top-0 start-0 bg-dark {{ 'd-none' if not image else '' }}"
+            <img id="mainPreview" src="{{ image.file_path if (image and image.media_type != 'video') else '' }}"
+                 class="img-fluid w-100 h-100 object-fit-contain position-absolute top-0 start-0 bg-dark {{ 'd-none' if (not image) or image.media_type == 'video' else '' }}"
                  style="transition: opacity 0.3s;">
+            <video id="mainPreviewVideo" src="{{ image.file_path if (image and image.media_type == 'video') else '' }}"
+                   controls playsinline
+                   class="w-100 h-100 object-fit-contain position-absolute top-0 start-0 bg-dark {{ 'd-none' if (not image) or image.media_type != 'video' else '' }}"
+                   style="transition: opacity 0.3s;"></video>
         </div>
     </div>
 

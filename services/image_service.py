@@ -1,16 +1,55 @@
 import json
 from flask import current_app
+from sqlalchemy.orm import selectinload
+from sqlalchemy.sql.expression import func
 from extensions import db
 from models import Image, Tag, ReferenceImage
 from utils import process_image, remove_physical_file
+from services.media_service import save_media
 
 
 class ImageService:
     @staticmethod
-    def create_image(file, data, ref_files=None):
+    def build_query(category_filter=None, search_query='', tag_filter='', sort_by='date', show_sensitive=True):
+        """构建画廊/模板/API 共用的已审核作品查询。
+
+        预加载 tags 与 refs 以消除 to_dict()/模板遍历产生的 N+1 查询。
+        """
+        query = Image.query.options(
+            selectinload(Image.tags),
+            selectinload(Image.refs),
+        ).filter_by(status='approved')
+
+        if category_filter:
+            query = query.filter_by(category=category_filter)
+
+        if not show_sensitive:
+            query = query.filter(~Image.tags.any(Tag.is_sensitive == True))
+
+        if tag_filter:
+            query = query.filter(Image.tags.any(name=tag_filter))
+
+        if search_query:
+            query = query.filter(
+                Image.title.contains(search_query) |
+                Image.prompt.contains(search_query) |
+                Image.author.contains(search_query)
+            )
+
+        if sort_by == 'hot':
+            query = query.order_by(Image.heat_score.desc(), Image.created_at.desc())
+        elif sort_by == 'random':
+            query = query.order_by(func.random())
+        else:
+            query = query.order_by(Image.created_at.desc())
+
+        return query
+
+    @staticmethod
+    def create_image(file, data, ref_files=None, poster_file=None):
         """创建新作品记录"""
         upload_folder = current_app.config['UPLOAD_FOLDER']
-        web_path, thumb_path = process_image(file, upload_folder)
+        web_path, thumb_path, media_type = save_media(file, upload_folder, poster_file=poster_file)
 
         try:
             image = Image(
@@ -22,6 +61,7 @@ class ImageService:
                 category=data.get('category', 'gallery'),
                 file_path=web_path,
                 thumbnail_path=thumb_path,
+                media_type=media_type,
                 status=data.get('status', 'pending')
             )
 
@@ -49,7 +89,7 @@ class ImageService:
             raise e
 
     @staticmethod
-    def update_image(image_id, data, new_main_file=None, new_ref_files=None, deleted_ref_ids=None):
+    def update_image(image_id, data, new_main_file=None, new_ref_files=None, deleted_ref_ids=None, poster_file=None):
         """更新作品信息"""
         image = db.session.get(Image, image_id)
         if not image:
@@ -69,9 +109,10 @@ class ImageService:
         # 替换主图
         if new_main_file and new_main_file.filename:
             old_files = [image.file_path, image.thumbnail_path]
-            web_path, thumb_path = process_image(new_main_file, upload_folder)
+            web_path, thumb_path, media_type = save_media(new_main_file, upload_folder, poster_file=poster_file)
             image.file_path = web_path
             image.thumbnail_path = thumb_path
+            image.media_type = media_type
 
             for p in old_files:
                 remove_physical_file(p)

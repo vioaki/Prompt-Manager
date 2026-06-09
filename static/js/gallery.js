@@ -19,7 +19,9 @@ window.showDetail = function(el) {
         // 1. 基础信息渲染
         const modalImg = document.getElementById('modalImg');
         const modalVideo = document.getElementById('modalVideo');
-        const isVideo = /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(data.file_path || '');
+        // 优先使用后端 media_type，回退到扩展名判断 (兼容历史数据)
+        const isVideo = data.media_type === 'video' ||
+            /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(data.file_path || '');
 
         if (isVideo) {
             modalImg.classList.add('d-none');
@@ -51,38 +53,60 @@ window.showDetail = function(el) {
         const matches = [...window.rawPrompt.matchAll(regex)];
 
         if (matches.length > 0) {
-            // A. 生成高亮 Prompt HTML
-            // 给每个变量 span 一个唯一的 ID，方便 updateVar 函数精确定位更新
+            // A. 生成高亮 Prompt：用 DOM API 逐段拼接，避免 innerHTML 注入用户数据 (XSS)
+            promptContainer.textContent = '';
+            let lastIndex = 0;
             let varIndex = 0;
-            const highlightedHtml = window.rawPrompt.replace(regex, (match, p1) => {
+            window.rawPrompt.replace(regex, (match, p1, offset) => {
+                if (offset > lastIndex) {
+                    promptContainer.appendChild(
+                        document.createTextNode(window.rawPrompt.slice(lastIndex, offset))
+                    );
+                }
                 const varName = p1.trim();
-                const spanId = `preview-var-${varName}-${varIndex++}`;
-                // data-original 用于后续查找所有同名变量
-                return `<span id="${spanId}" class="prompt-var-highlight" data-original="${varName}">${match}</span>`;
+                const span = document.createElement('span');
+                span.id = `preview-var-${varIndex++}`;
+                span.className = 'prompt-var-highlight';
+                span.dataset.original = varName;
+                span.textContent = match;
+                promptContainer.appendChild(span);
+                lastIndex = offset + match.length;
+                return match;
             });
-            promptContainer.innerHTML = highlightedHtml;
+            if (lastIndex < window.rawPrompt.length) {
+                promptContainer.appendChild(
+                    document.createTextNode(window.rawPrompt.slice(lastIndex))
+                );
+            }
 
-            // B. 生成变量输入列表
-            varsContainer.innerHTML = '';
+            // B. 生成变量输入列表 (DOM API + addEventListener，无字符串拼接)
+            varsContainer.textContent = '';
             const uniqueVars = new Set();
 
             matches.forEach(match => {
                 const varName = match[1].trim();
-                // 去重：如果同一个变量出现多次，只生成一个输入框
                 if (!uniqueVars.has(varName)) {
                     uniqueVars.add(varName);
-                    window.currentVars[varName] = ""; // 初始化值
+                    window.currentVars[varName] = "";
 
-                    const div = document.createElement('div');
-                    div.className = 'var-input-row animate-up'; // 使用 style.css 中定义的 iOS 风格样式
-                    div.innerHTML = `
-                        <div class="var-label" title="${varName}">${varName}</div>
-                        <input type="text" class="var-input"
-                               placeholder="Value"
-                               autocomplete="off"
-                               oninput="window.updateVar('${varName}', this.value)">
-                    `;
-                    varsContainer.appendChild(div);
+                    const row = document.createElement('div');
+                    row.className = 'var-input-row animate-up';
+
+                    const label = document.createElement('div');
+                    label.className = 'var-label';
+                    label.title = varName;
+                    label.textContent = varName;
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'var-input';
+                    input.placeholder = 'Value';
+                    input.autocomplete = 'off';
+                    input.addEventListener('input', () => window.updateVar(varName, input.value));
+
+                    row.appendChild(label);
+                    row.appendChild(input);
+                    varsContainer.appendChild(row);
                 }
             });
             varsSection.classList.remove('d-none');
@@ -128,47 +152,76 @@ function renderOtherDetails(data) {
 
     // Tags
     const tagsContainer = document.getElementById('modalTags');
-    tagsContainer.innerHTML = '';
+    tagsContainer.textContent = '';
     data.tags.forEach(tag => {
-        tagsContainer.innerHTML += `<span class="badge rounded-pill fw-normal border me-1" style="background:var(--btn-bg); color:var(--text-primary); border-color: rgba(128,128,128,0.2) !important;">${tag}</span>`;
+        const span = document.createElement('span');
+        span.className = 'badge rounded-pill fw-normal border me-1';
+        span.style.background = 'var(--btn-bg)';
+        span.style.color = 'var(--text-primary)';
+        span.style.borderColor = 'rgba(128,128,128,0.2)';
+        span.textContent = tag;
+        tagsContainer.appendChild(span);
     });
 
     // Refs (参考图)
     const refsSection = document.getElementById('modalRefsSection');
     const refsContainer = document.getElementById('modalRefs');
-    refsContainer.innerHTML = '';
+    refsContainer.textContent = '';
 
     if (data.refs && data.refs.length > 0) {
         refsSection.classList.remove('d-none');
-        // 添加效果图作为第一个参考
-        refsContainer.innerHTML += `
-        <div class="d-flex flex-column align-items-center cursor-pointer me-2" onclick="document.getElementById('modalImg').src='${data.file_path}'">
-            <img src="${data.file_path}" class="rounded border mb-1" style="width:60px;height:60px;object-fit:cover;">
-            <span style="font-size:0.6rem;color:var(--text-secondary);">效果图</span>
-        </div>`;
+
+        const setMainImg = (src) => { document.getElementById('modalImg').src = src; };
+
+        // 构建一个参考图缩略格 (用 DOM API，避免 innerHTML 注入)
+        const buildCell = ({ src, label, isPlaceholder, onClick }) => {
+            const cell = document.createElement('div');
+            cell.className = 'd-flex flex-column align-items-center me-1';
+
+            if (isPlaceholder) {
+                const box = document.createElement('div');
+                box.className = 'rounded border mb-1 d-flex flex-column align-items-center justify-content-center bg-light text-secondary';
+                box.style.cssText = 'width:60px;height:60px;border-style:dashed !important;';
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-person-bounding-box';
+                icon.style.fontSize = '1.2rem';
+                box.appendChild(icon);
+                cell.appendChild(box);
+            } else {
+                const img = document.createElement('img');
+                img.className = 'rounded border mb-1';
+                img.style.cssText = 'width:60px;height:60px;object-fit:cover;';
+                img.src = src;  // 属性赋值，不会执行其中的 HTML/JS
+                cell.appendChild(img);
+            }
+
+            const cap = document.createElement('span');
+            cap.style.cssText = 'font-size:0.6rem;color:var(--text-secondary);';
+            cap.textContent = label;
+            cell.appendChild(cap);
+
+            if (onClick) {
+                cell.classList.add('cursor-pointer');
+                cell.addEventListener('click', onClick);
+            }
+            return cell;
+        };
+
+        // 效果图作为第一个参考
+        refsContainer.appendChild(buildCell({
+            src: data.file_path,
+            label: '效果图',
+            isPlaceholder: false,
+            onClick: () => setMainImg(data.file_path),
+        }));
 
         data.refs.forEach((ref, idx) => {
-            let innerHTML = '';
-            if (ref.is_placeholder) {
-                innerHTML = `
-                <div class="rounded border mb-1 d-flex flex-column align-items-center justify-content-center bg-light text-secondary" style="width:60px;height:60px; border-style: dashed !important;">
-                    <i class="bi bi-person-bounding-box" style="font-size: 1.2rem;"></i>
-                </div>
-                <span style="font-size:0.6rem;color:var(--text-secondary);">变量 ${idx+1}</span>`;
-            } else {
-                innerHTML = `
-                <img src="${ref.file_path}" class="rounded border mb-1" style="width:60px;height:60px;object-fit:cover;">
-                <span style="font-size:0.6rem;color:var(--text-secondary);">Ref ${idx+1}</span>`;
-            }
-
-            const div = document.createElement('div');
-            div.className = 'd-flex flex-column align-items-center cursor-pointer me-1';
-            // 只有非占位符图片才支持点击切换大图
-            if (!ref.is_placeholder) {
-                div.onclick = function() { document.getElementById('modalImg').src = ref.file_path; };
-            }
-            div.innerHTML = innerHTML;
-            refsContainer.appendChild(div);
+            refsContainer.appendChild(buildCell({
+                src: ref.file_path,
+                label: ref.is_placeholder ? `变量 ${idx + 1}` : `Ref ${idx + 1}`,
+                isPlaceholder: ref.is_placeholder,
+                onClick: ref.is_placeholder ? null : () => setMainImg(ref.file_path),
+            }));
         });
     } else {
         refsSection.classList.add('d-none');
@@ -210,11 +263,12 @@ function renderOtherDetails(data) {
 window.updateVar = function(name, value) {
     window.currentVars[name] = value;
 
-    // 查找所有关联这个变量名的 span
-    const spans = document.querySelectorAll(`span[data-original="${name}"]`);
-    spans.forEach(span => {
+    // 查找所有关联这个变量名的 span (遍历比对 dataset，避免把用户输入拼进 CSS 选择器)
+    const allSpans = document.querySelectorAll('#modalPrompt span[data-original]');
+    allSpans.forEach(span => {
+        if (span.dataset.original !== name) return;
         if (value && value.trim() !== '') {
-            // 用户输入了值：显示值，去除下划线/特殊样式，使其看起来像普通文本但保留高亮色
+            // 用户输入了值：显示值
             span.innerText = value;
         } else {
             // 用户清空了输入：恢复显示占位符 {{variable}}

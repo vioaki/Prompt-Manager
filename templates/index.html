@@ -79,18 +79,24 @@
                 {% for img in images %}
                 <div class="gallery-item group">
                     <div class="art-frame cursor-zoom" onclick="showDetail(this)">
-                        {% set file_path_lower = (img.file_path or '') | lower %}
-                        {% set is_video = file_path_lower.endswith('.mp4') or file_path_lower.endswith('.webm') or file_path_lower.endswith('.ogg') or file_path_lower.endswith('.mov') or file_path_lower.endswith('.m4v') %}
+                        {% set is_video = img.media_type == 'video' %}
 
                         <script type="application/json" class="img-data">
-                            {{ img.to_dict() | tojson | safe }}
+                            {{ img.to_dict(request.url_root) | tojson | safe }}
                         </script>
 
                         {% if is_video %}
-                            <video src="{{ img.file_path }}"
-                                   {% if img.thumbnail_path %}poster="{{ img.thumbnail_path }}"{% endif %}
-                                   muted autoplay loop playsinline preload="metadata"
-                                   style="display:block;width:100%;height:auto;"></video>
+                            {% if img.thumbnail_path %}
+                                <img src="{{ img.thumbnail_path }}" alt="{{ img.title }}" loading="lazy" onload="this.classList.add('reveal')">
+                            {% else %}
+                                <div class="d-flex align-items-center justify-content-center bg-dark text-white-50" style="aspect-ratio: 1 / 1;">
+                                    <i class="bi bi-film" style="font-size: 2.5rem;"></i>
+                                </div>
+                            {% endif %}
+                            <span class="position-absolute top-50 start-50 translate-middle d-flex align-items-center justify-content-center rounded-circle bg-black bg-opacity-50 text-white"
+                                  style="width: 48px; height: 48px;">
+                                <i class="bi bi-play-fill fs-4"></i>
+                            </span>
                         {% else %}
                             {% if config.USE_THUMBNAIL_IN_PREVIEW %}
                                 <img src="{{ img.thumbnail_path or img.file_path }}" alt="{{ img.title }}" loading="lazy" onload="this.classList.add('reveal')">

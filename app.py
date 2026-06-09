@@ -1,9 +1,10 @@
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify
 from werkzeug.security import generate_password_hash
 from flask_login import current_user
+from PIL import Image as PilImage
 
 from config import Config
 from extensions import db, login_manager, csrf, migrate, limiter
@@ -17,6 +18,9 @@ def create_app(config_class=Config):
 
     # 修复 Flask 3.0+ JSON 中文显示
     app.json.ensure_ascii = False
+
+    # Pillow 解压炸弹防护：限制单张图片最大像素数
+    PilImage.MAX_IMAGE_PIXELS = app.config.get('MAX_IMAGE_PIXELS')
 
     # 初始化扩展
     db.init_app(app)
@@ -78,6 +82,12 @@ def register_error_handlers(app):
     def page_not_found(e):
         return render_template('404.html'), 404
 
+    @app.errorhandler(413)
+    def request_entity_too_large(e):
+        if request.path.startswith('/api/'):
+            return jsonify({'code': 413, 'message': '上传内容过大', 'data': None}), 413
+        return render_template('413.html'), 413
+
     @app.errorhandler(500)
     def internal_server_error(e):
         return render_template('500.html'), 500
@@ -98,6 +108,21 @@ def register_commands(app):
             print(f"✅ 管理员创建成功: {admin_user}")
         else:
             print(f"ℹ️ 管理员 {admin_user} 已存在")
+
+    @app.cli.command("backfill-media-type")
+    def backfill_media_type_command():
+        """根据 file_path 回填历史作品的 media_type 字段"""
+        from models import Image
+        from services.media_service import infer_media_type
+
+        updated = 0
+        for image in Image.query.all():
+            correct = infer_media_type(image.file_path)
+            if image.media_type != correct:
+                image.media_type = correct
+                updated += 1
+        db.session.commit()
+        print(f"✅ 已回填 {updated} 条记录的 media_type")
 
 
 app = create_app()

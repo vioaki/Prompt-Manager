@@ -1,14 +1,31 @@
 import hashlib
+import hmac
 import json
 import time
+from functools import wraps
 from flask import Blueprint, render_template, request, current_app, url_for, jsonify, make_response
 from flask_login import current_user
-from sqlalchemy.sql.expression import func
 from models import db, Image, Tag, SystemSetting
 from extensions import limiter, csrf
 from services.image_service import ImageService
 
 bp = Blueprint('public', __name__)
+
+
+def require_api_token(view):
+    """可选 API 鉴权：仅当配置了 API_UPLOAD_TOKEN 时才校验请求头令牌。"""
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        expected = current_app.config.get('API_UPLOAD_TOKEN') or ''
+        if expected:
+            provided = request.headers.get('X-API-Token', '')
+            auth = request.headers.get('Authorization', '')
+            if not provided and auth.startswith('Bearer '):
+                provided = auth[len('Bearer '):]
+            if not provided or not hmac.compare_digest(provided, expected):
+                return jsonify({'code': 401, 'message': '未授权：缺少或错误的 API 令牌', 'data': None}), 401
+        return view(*args, **kwargs)
+    return wrapper
 
 
 def can_see_sensitive():
@@ -33,32 +50,14 @@ def _get_common_data(category_filter=None):
     sort_by = request.args.get('sort', 'date')
     show_sensitive = can_see_sensitive()
 
-    # 构建图片查询
-    query = Image.query.filter_by(status='approved')
-
-    if category_filter:
-        query = query.filter_by(category=category_filter)
-
-    if not show_sensitive:
-        query = query.filter(~Image.tags.any(Tag.is_sensitive == True))
-
-    if tag_filter:
-        query = query.filter(Image.tags.any(name=tag_filter))
-
-    if search_query:
-        query = query.filter(
-            Image.title.contains(search_query) |
-            Image.prompt.contains(search_query) |
-            Image.author.contains(search_query)
-        )
-
-    # 排序
-    if sort_by == 'hot':
-        query = query.order_by(Image.heat_score.desc(), Image.created_at.desc())
-    elif sort_by == 'random':
-        query = query.order_by(func.random())
-    else:
-        query = query.order_by(Image.created_at.desc())
+    # 构建图片查询 (共享 builder，含 tags/refs 预加载)
+    query = ImageService.build_query(
+        category_filter=category_filter,
+        search_query=search_query,
+        tag_filter=tag_filter,
+        sort_by=sort_by,
+        show_sensitive=show_sensitive,
+    )
 
     pagination = query.paginate(page=page, per_page=current_app.config['ITEMS_PER_PAGE'])
 
@@ -128,9 +127,13 @@ def upload():
         new_image = ImageService.create_image(
             file=file,
             data=form_data,
-            ref_files=request.files.getlist('ref_images')
+            ref_files=request.files.getlist('ref_images'),
+            poster_file=request.files.get('video_poster')
         )
         return render_template('success.html', status=initial_status, image=new_image)
+    except ValueError as e:
+        # 校验失败（非法类型/超体积）：返回用户友好的 400
+        return f"上传失败: {str(e)}", 400
     except Exception as e:
         current_app.logger.error(f"Upload Error: {e}")
         return f"发布失败: {str(e)}", 500
@@ -177,62 +180,47 @@ def _get_api_data(category_filter):
     tag_filter = request.args.get('tag', '').strip()
     sort_by = request.args.get('sort', 'date')
 
-    # --- 2. 构建查询 ---
-    query = Image.query.filter_by(status='approved')
-
-    if category_filter:
-        query = query.filter_by(category=category_filter)
-
-    if search_query:
-        query = query.filter(
-            Image.title.contains(search_query) |
-            Image.prompt.contains(search_query) |
-            Image.author.contains(search_query)
-        )
-
-    if tag_filter:
-        query = query.filter(Image.tags.any(name=tag_filter))
-
-    # [可选] 过滤敏感内容
-    # query = query.filter(~Image.tags.any(Tag.is_sensitive == True))
-
-    # --- 3. 排序逻辑 ---
-    if sort_by == 'hot':
-        query = query.order_by(Image.heat_score.desc(), Image.created_at.desc())
-    elif sort_by == 'random':
-        query = query.order_by(func.random())
-    else:
-        query = query.order_by(Image.created_at.desc())
+    # --- 2. 构建查询 (共享 builder，含 tags/refs 预加载消除 N+1) ---
+    query = ImageService.build_query(
+        category_filter=category_filter,
+        search_query=search_query,
+        tag_filter=tag_filter,
+        sort_by=sort_by,
+        show_sensitive=True,  # API 当前不过滤敏感内容，保持既有行为
+    )
 
     # --- 4. 获取数据 ---
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    items_data = [img.to_dict() for img in pagination.items]
+    items_data = [img.to_dict(request.url_root) for img in pagination.items]
 
-    # --- 5. 构建响应 ---
-    response_payload = {
-        'code': 200,
-        'message': 'success',
-        'meta': {
-            'page': page,
-            'per_page': per_page,
-            'total_items': pagination.total,
-            'total_pages': pagination.pages,
-            'has_next': pagination.has_next,
-            # 自动生成下一页链接
-            'next_url': url_for(request.endpoint, page=pagination.next_num, per_page=per_page, q=search_query,
-                                tag=tag_filter, sort=sort_by, _external=True) if pagination.has_next else None,
-            'server_timestamp': int(time.time())
-        },
-        'data': items_data
+    meta = {
+        'page': page,
+        'per_page': per_page,
+        'total_items': pagination.total,
+        'total_pages': pagination.pages,
+        'has_next': pagination.has_next,
+        # 自动生成下一页链接
+        'next_url': url_for(request.endpoint, page=pagination.next_num, per_page=per_page, q=search_query,
+                            tag=tag_filter, sort=sort_by, _external=True) if pagination.has_next else None,
     }
 
     # --- 6. ETag 缓存校验 ---
-    json_str = json.dumps(response_payload, sort_keys=True, ensure_ascii=False)
-    etag_value = hashlib.md5(json_str.encode('utf-8')).hexdigest()
+    # 只对实际数据 (data + 分页 meta) 求哈希，排除每次都变的 server_timestamp，
+    # 否则 ETag 永不命中、304 形同虚设。
+    etag_basis = json.dumps({'data': items_data, 'meta': meta}, sort_keys=True, ensure_ascii=False)
+    etag_value = hashlib.md5(etag_basis.encode('utf-8')).hexdigest()
 
     if request.if_none_match and request.if_none_match.contains(etag_value):
-        # 命中缓存，返回 304 Not Modified
         return make_response('', 304)
+
+    # --- 5. 构建响应 (body 仍带 server_timestamp，便于客户端调试) ---
+    response_payload = {
+        'code': 200,
+        'message': 'success',
+        'meta': {**meta, 'server_timestamp': int(time.time())},
+        'data': items_data,
+    }
+    json_str = json.dumps(response_payload, ensure_ascii=False)
 
     # --- 7. 返回响应 ---
     response = make_response(json_str)
@@ -281,6 +269,7 @@ def stat_copy(img_id):
 @bp.route('/api/upload', methods=['POST'])
 @csrf.exempt
 @limiter.limit(lambda: current_app.config['UPLOAD_RATE_LIMIT'])
+@require_api_token
 def api_upload():
     """
     API 上传接口
@@ -325,15 +314,18 @@ def api_upload():
         new_image = ImageService.create_image(
             file=file,
             data=form_data,
-            ref_files=request.files.getlist('ref_images')
+            ref_files=request.files.getlist('ref_images'),
+            poster_file=request.files.get('video_poster')
         )
 
         return jsonify({
             'code': 201,
             'message': '上传成功' if initial_status == 'approved' else '上传成功，等待审核',
-            'data': new_image.to_dict()
+            'data': new_image.to_dict(request.url_root)
         }), 201
 
+    except ValueError as e:
+        return jsonify({'code': 400, 'message': f'上传失败: {str(e)}', 'data': None}), 400
     except Exception as e:
         current_app.logger.error(f"API Upload Error: {e}")
         return jsonify({'code': 500, 'message': f'上传失败: {str(e)}', 'data': None}), 500

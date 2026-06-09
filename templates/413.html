@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}文件过大 - Prompt Manager{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 60vh;">
+    <div class="text-warning mb-3"><i class="bi bi-cloud-slash" style="font-size: 4rem;"></i></div>
+    <h1 class="display-1 fw-bold text-warning mb-0">413</h1>
+    <h2 class="mb-3 fw-bold">上传内容过大</h2>
+    <p class="text-muted mb-4 text-center">
+        你上传的文件超过了大小限制。请压缩后重试，或上传更小的文件。
+    </p>
+    <a href="{{ url_for('public.index') }}" class="btn btn-warning rounded-pill px-4">
+        <i class="bi bi-house me-2"></i>返回首页
+    </a>
+</div>
+{% endblock %}

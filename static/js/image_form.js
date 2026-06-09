@@ -172,21 +172,114 @@ document.addEventListener('DOMContentLoaded', function() {
     if(cardTxt2Img) cardTxt2Img.addEventListener('click', () => toggleType('txt2img'));
     if(cardImg2Img) cardImg2Img.addEventListener('click', () => toggleType('img2img'));
 
-    // Main Image Preview
+    // Main Image / Video Preview
     const mainInput = document.getElementById('mainImageInput');
+    const posterInput = document.getElementById('posterInput');
+    const mainPreview = document.getElementById('mainPreview');
+    const mainPreviewVideo = document.getElementById('mainPreviewVideo');
+    const uploadZone = document.querySelector('.upload-zone');
+    const btnChangeMedia = document.getElementById('btnChangeMedia');
+
+    // 显式的“更换”入口：避免选好文件后整块区域仍捕获点击导致误触重选。
+    if (btnChangeMedia && mainInput) {
+        btnChangeMedia.addEventListener('click', () => mainInput.click());
+    }
+
+    // edit 模式下若已有主作品，进入页面即处于“已有预览”状态，需可交互。
+    if (uploadZone && (mainPreview && mainPreview.getAttribute('src') ||
+                       mainPreviewVideo && mainPreviewVideo.getAttribute('src'))) {
+        uploadZone.classList.add('has-media');
+    }
+
     if (mainInput) {
         mainInput.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    document.getElementById('mainPlaceholder').classList.add('d-none');
-                    const img = document.getElementById('mainPreview');
-                    img.src = e.target.result;
-                    img.classList.remove('d-none');
-                }
-                reader.readAsDataURL(this.files[0]);
+            if (!(this.files && this.files[0])) return;
+            const file = this.files[0];
+            document.getElementById('mainPlaceholder').classList.add('d-none');
+            if (uploadZone) uploadZone.classList.add('has-media');
+
+            if (file.type.startsWith('video/')) {
+                showVideoPreview(file);
+            } else {
+                showImagePreview(file);
             }
         });
+    }
+
+    function showImagePreview(file) {
+        if (mainPreviewVideo) {
+            mainPreviewVideo.pause();
+            mainPreviewVideo.removeAttribute('src');
+            mainPreviewVideo.classList.add('d-none');
+        }
+        clearPoster();
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            mainPreview.src = e.target.result;
+            mainPreview.classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function showVideoPreview(file) {
+        if (mainPreview) {
+            mainPreview.src = '';
+            mainPreview.classList.add('d-none');
+        }
+        const url = URL.createObjectURL(file);
+        if (mainPreviewVideo) {
+            mainPreviewVideo.src = url;
+            mainPreviewVideo.classList.remove('d-none');
+        }
+        captureVideoPoster(file);
+    }
+
+    function clearPoster() {
+        if (posterInput) posterInput.value = '';
+    }
+
+    // 客户端截取视频首帧作为封面，随表单一并提交。失败则留空，由后端/前端兜底占位。
+    function captureVideoPoster(file) {
+        clearPoster();
+        if (!posterInput || typeof HTMLCanvasElement === 'undefined') return;
+
+        const video = document.createElement('video');
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        const url = URL.createObjectURL(file);
+        video.src = url;
+
+        const cleanup = () => URL.revokeObjectURL(url);
+
+        video.addEventListener('loadeddata', () => {
+            // 跳到一个非零的早期帧，规避某些编码首帧全黑
+            try { video.currentTime = Math.min(0.1, video.duration || 0.1); } catch (e) { /* noop */ }
+        });
+
+        video.addEventListener('seeked', () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 360;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const posterFile = new File([blob], 'poster.jpg', { type: 'image/jpeg' });
+                        const dt = new DataTransfer();
+                        dt.items.add(posterFile);
+                        posterInput.files = dt.files;
+                    }
+                    cleanup();
+                }, 'image/jpeg', 0.85);
+            } catch (e) {
+                console.warn('Poster capture failed:', e);
+                cleanup();
+            }
+        });
+
+        video.addEventListener('error', cleanup);
     }
 
     // Reference Images Logic
