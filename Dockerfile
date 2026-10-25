@@ -33,7 +33,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     GUNICORN_WORKERS=2 \
     GUNICORN_THREADS=4 \
     GUNICORN_BIND=0.0.0.0:5000 \
-    GUNICORN_LOG_LEVEL=info
+    GUNICORN_LOG_LEVEL=info \
+    GUNICORN_TIMEOUT=120
 
 WORKDIR /app
 
@@ -79,7 +80,7 @@ exec gunicorn app:app \
     --access-logfile - \
     --error-logfile - \
     --capture-output \
-    --timeout 120 \
+    --timeout ${GUNICORN_TIMEOUT} \
     --graceful-timeout 30
 EOF
 

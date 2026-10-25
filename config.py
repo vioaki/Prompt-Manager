@@ -120,6 +120,10 @@ class Config:
     MAX_VIDEO_SIZE_MB = int(os.environ.get('MAX_VIDEO_SIZE_MB') or 200)
     # 请求级全局粗闸：取较大者 + 10MB 余量（用于多参考图等场景）
     MAX_CONTENT_LENGTH = (max(MAX_IMAGE_SIZE_MB, MAX_VIDEO_SIZE_MB) + 10) * 1024 * 1024
+    MAX_BACKUP_SIZE_MB = int(os.environ.get('MAX_BACKUP_SIZE_MB') or 2048)
+    MAX_BACKUP_UNCOMPRESSED_SIZE_MB = int(os.environ.get('MAX_BACKUP_UNCOMPRESSED_SIZE_MB') or 8192)
+    if MAX_BACKUP_SIZE_MB <= 0 or MAX_BACKUP_UNCOMPRESSED_SIZE_MB <= 0:
+        raise ValueError('备份大小上限必须为正整数 (MiB)')
     # Pillow 解压炸弹防护：单张图片最大像素数
     MAX_IMAGE_PIXELS = int(os.environ.get('MAX_IMAGE_PIXELS') or 50_000_000)
     # 公开上传接口 /api/upload 的可选鉴权令牌，留空则不校验（向后兼容）

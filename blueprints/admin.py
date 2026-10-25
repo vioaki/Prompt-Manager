@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, Response, \
-    stream_with_context, send_file, jsonify
+    stream_with_context, send_file, jsonify, abort
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Image, Tag, ReferenceImage, SystemSetting, User
@@ -9,8 +9,9 @@ from services.config_service import ConfigService
 import json
 import time
 import zipfile
-import io
 import os
+from pathlib import Path
+import tempfile
 import urllib.request
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -193,11 +194,23 @@ def import_zip():
     file = request.files.get('zip_file')
     if not file: return "请上传 ZIP 文件", 400
 
-    temp_zip_path = os.path.join(current_app.instance_path, 'temp_import.zip')
-    if not os.path.exists(current_app.instance_path): os.makedirs(current_app.instance_path)
-    file.save(temp_zip_path)
-
-    return Response(stream_with_context(DataService.import_zip_stream(temp_zip_path)), mimetype='text/plain')
+    os.makedirs(current_app.instance_path, exist_ok=True)
+    temp_file = tempfile.NamedTemporaryFile(dir=current_app.instance_path, prefix='import-',
+                                          suffix='.zip', delete=False)
+    temp_zip_path = Path(temp_file.name)
+    try:
+        with temp_file:
+            file.save(temp_file)
+            if temp_file.tell() > current_app.config['MAX_BACKUP_SIZE_MB'] * 1024 * 1024:
+                abort(413)
+        response = Response(stream_with_context(DataService.import_zip_stream(temp_zip_path)), mimetype='text/plain')
+        # 生成器尚未开始就关闭响应时，也必须清理上传文件。
+        response.call_on_close(lambda: temp_zip_path.unlink(missing_ok=True))
+        return response
+    except BaseException:
+        temp_file.close()
+        temp_zip_path.unlink(missing_ok=True)
+        raise
 
 
 @bp.route('/export-zip', methods=['POST'])
@@ -209,57 +222,49 @@ def export_zip():
         flash('没有数据可导出')
         return redirect(url_for('admin.dashboard', tab='data-mgmt'))
 
-    memory_file = io.BytesIO()
+    os.makedirs(current_app.instance_path, exist_ok=True)
+    archive = tempfile.TemporaryFile(mode='w+b', dir=current_app.instance_path)
+    try:
+        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as zf:
+            json_data = []
+            upload_root = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'])
+            written = set()
 
-    # 构建 ZIP
-    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-        json_data = []
-        upload_root = os.path.join(current_app.root_path, current_app.config['UPLOAD_FOLDER'])
+            def write_media(path):
+                if not path or path.startswith(('http://', 'https://')):
+                    abort(400, description='导出失败：真实媒体缺少本地文件路径')
+                filename = os.path.basename(path)
+                absolute = os.path.join(upload_root, filename)
+                member = f'images/{filename}'
+                if not os.path.isfile(absolute):
+                    abort(400, description=f'导出失败：文件缺失 {filename}')
+                if member not in written:
+                    zf.write(absolute, member)
+                    written.add(member)
+                return member
 
-        for img in images:
-            # 准备元数据
-            item_data = img.to_dict()
+            for img in images:
+                item_data = img.to_dict()
+                item_data['zip_image_path'] = write_media(img.file_path)
+                if img.thumbnail_path:
+                    item_data['zip_thumb_path'] = write_media(img.thumbnail_path)
+                for ref in img.refs:
+                    if not ref.is_placeholder:
+                        write_media(ref.file_path)
+                json_data.append(item_data)
 
-            img_filename = os.path.basename(img.file_path)
-            item_data['zip_image_path'] = f"images/{img_filename}"
+            zf.writestr('data.json', json.dumps({'images': json_data}, ensure_ascii=False, indent=2))
 
-            if img.thumbnail_path:
-                thumb_name = os.path.basename(img.thumbnail_path)
-                item_data['zip_thumb_path'] = f"images/{thumb_name}"
-
-            # 写入主图
-            abs_img_path = os.path.join(upload_root, img_filename)
-            if os.path.exists(abs_img_path):
-                zf.write(abs_img_path, f"images/{img_filename}")
-
-            # 写入缩略图
-            if img.thumbnail_path:
-                abs_thumb = os.path.join(upload_root, os.path.basename(img.thumbnail_path))
-                if os.path.exists(abs_thumb):
-                    zf.write(abs_thumb, f"images/{os.path.basename(img.thumbnail_path)}")
-
-            # 写入参考图
-            item_data['refs'] = []
-            for ref in img.refs:
-                ref_fname = os.path.basename(ref.file_path)
-                abs_ref_path = os.path.join(upload_root, ref_fname)
-                if os.path.exists(abs_ref_path):
-                    zf.write(abs_ref_path, f"images/{ref_fname}")
-                    item_data['refs'].append(f"images/{ref_fname}")
-
-            json_data.append(item_data)
-
-        # 写入 JSON 索引
-        zf.writestr("data.json", json.dumps({"images": json_data}, ensure_ascii=False, indent=2))
-
-    memory_file.seek(0)
-    filename = f"backup_{time.strftime('%Y%m%d')}.zip"
-    return send_file(
-        memory_file,
-        mimetype='application/zip',
-        as_attachment=True,
-        download_name=filename
-    )
+        size = archive.tell()
+        archive.seek(0)
+        # send_file 的 WSGI 文件迭代器在下载完成或断开时关闭临时文件。
+        response = send_file(archive, mimetype='application/zip', as_attachment=True,
+                             download_name=f"backup_{time.strftime('%Y%m%d')}.zip")
+        response.content_length = size
+        return response
+    except BaseException:
+        archive.close()
+        raise
 
 
 @bp.route('/tag/update', methods=['POST'])

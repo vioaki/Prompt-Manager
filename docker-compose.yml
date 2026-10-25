@@ -21,6 +21,8 @@ services:
       GUNICORN_THREADS: "4"
       GUNICORN_BIND: 0.0.0.0:5000
       GUNICORN_LOG_LEVEL: info
+      # GB 级备份可设置为 600；默认仍为 120 秒
+      GUNICORN_TIMEOUT: "${GUNICORN_TIMEOUT:-120}"
       TZ: Asia/Shanghai
 
     ports:

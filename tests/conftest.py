@@ -36,6 +36,8 @@ def app(tmp_path):
     from models import User
 
     application = create_app(make_test_config(tmp_path))
+    application.instance_path = str(tmp_path / 'instance')
+    os.makedirs(application.instance_path, exist_ok=True)
     with application.app_context():
         db.create_all()
         db.session.add(User(username='admin', password_hash=generate_password_hash('secret')))

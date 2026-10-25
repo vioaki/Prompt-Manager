@@ -22,6 +22,12 @@ def create_app(config_class=Config):
     # Pillow 解压炸弹防护：限制单张图片最大像素数
     PilImage.MAX_IMAGE_PIXELS = app.config.get('MAX_IMAGE_PIXELS')
 
+    @app.before_request
+    def set_backup_request_limit():
+        # CSRF 会读取表单，必须先设置请求级上限。
+        if request.endpoint == 'admin.import_zip':
+            request.max_content_length = (app.config['MAX_BACKUP_SIZE_MB'] + 10) * 1024 * 1024
+
     # 初始化扩展
     db.init_app(app)
     login_manager.init_app(app)
@@ -84,6 +90,9 @@ def register_error_handlers(app):
 
     @app.errorhandler(413)
     def request_entity_too_large(e):
+        if request.endpoint == 'admin.import_zip':
+            limit = app.config['MAX_BACKUP_SIZE_MB']
+            return app.response_class(f'备份 ZIP 超过 {limit} MiB 大小上限', status=413, mimetype='text/plain')
         if request.path.startswith('/api/'):
             return jsonify({'code': 413, 'message': '上传内容过大', 'data': None}), 413
         return render_template('413.html'), 413

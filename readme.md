@@ -182,6 +182,22 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
 2.  **后台审核**：默认上传的作品处于“待审核”状态。管理员需访问 `/login` 登录后台，对作品进行通过或删除操作。
 3.  **敏感内容显示**：如果在 `.env` 配置文件中设置了 `ALLOW_PUBLIC_SENSITIVE_TOGGLE=True`，访客即可在“关于”页面看到开启显示敏感内容的开关。
 
+### ZIP 备份与恢复
+
+后台支持导入、导出本地文件备份，保留参考图顺序和占位符，仅跳过内容完全相同的作品。导入后仍需审核。
+
+```dotenv
+MAX_BACKUP_SIZE_MB=2048              # ZIP 上限：2 GiB
+MAX_BACKUP_UNCOMPRESSED_SIZE_MB=8192 # 解压总量上限：8 GiB
+GUNICORN_TIMEOUT=600                # 大包建议 600 秒，Docker 默认 120 秒
+```
+
+修改后重启；Docker Compose 需启用 `env_file: .env`。普通图片和视频上传限制保持原值。
+
+使用 Nginx 时，为导入路径设置 `client_max_body_size 2058m`（含表单开销），导入／导出的代理超时建议设为 600 秒，并使用 `proxy_buffering off` 显示实时进度。源码部署通过 `gunicorn --timeout 600` 调整超时。
+
+导出使用磁盘临时文件，请为 `instance` 和上传暂存目录预留足够空间。备份暂不支持 S3；此前残缺的记录重新导入后会新增，不会自动合并。
+
 ##  目录结构
 
 ```text
