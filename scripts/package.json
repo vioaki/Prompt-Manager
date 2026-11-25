@@ -1,0 +1,23 @@
+{
+  "name": "@prompt-pages/scripts",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "validate": "tsx src/validate-content.ts",
+    "build-content": "tsx src/build-content.ts",
+    "pr-preview": "tsx src/pr-preview-comment.ts",
+    "pr-command": "tsx src/pr-command.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@prompt-pages/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  }
+}
