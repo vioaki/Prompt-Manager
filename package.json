@@ -1,0 +1,27 @@
+{
+  "name": "prompt-manager-pages-engine",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @prompt-pages/scripts build-content && pnpm --filter @prompt-pages/web dev",
+    "build:content": "pnpm --filter @prompt-pages/scripts build-content",
+    "validate": "pnpm --filter @prompt-pages/scripts validate",
+    "build": "pnpm --filter @prompt-pages/shared build && pnpm --filter @prompt-pages/scripts build-content && pnpm --filter @prompt-pages/web build",
+    "test": "pnpm --filter @prompt-pages/shared test && pnpm --filter @prompt-pages/worker test && pnpm --filter @prompt-pages/scripts test",
+    "typecheck": "pnpm -r typecheck",
+    "worker:dev": "pnpm --filter @prompt-pages/worker dev",
+    "worker:deploy": "pnpm --filter @prompt-pages/worker run deploy"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd",
+      "@tailwindcss/oxide"
+    ]
+  }
+}

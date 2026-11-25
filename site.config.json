@@ -1,0 +1,10 @@
+{
+  "title": "Prompt Manager",
+  "subtitle": "Community AI Art Prompt & Workflow Library",
+  "repo": "vioaki/Prompt-Manager-Pages",
+  "engineRepo": "vioaki/Prompt-Manager",
+  "engineRef": "pages",
+  "workerApiUrl": "",
+  "sensitiveTags": ["NSFW", "恐怖", "腋", "足"],
+  "allowPublicSensitiveToggle": true
+}
