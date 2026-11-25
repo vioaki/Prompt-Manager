@@ -45,8 +45,8 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const [indexResp, contribResp] = await Promise.all([
-        fetch('data/index.json'),
-        fetch('data/contributors.json').catch(() => null),
+        fetch('data/index.json', { cache: 'no-cache' }),
+        fetch('data/contributors.json', { cache: 'no-cache' }).catch(() => null),
       ]);
       if (!indexResp.ok) {
         throw new Error(`加载画廊数据失败 (${indexResp.status})`);

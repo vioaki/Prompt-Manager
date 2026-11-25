@@ -40,6 +40,14 @@ export function GalleryPage({ categoryFilter }: GalleryPageProps) {
 
   const activeTag = searchParams.get('tag') || '';
   const searchQuery = searchParams.get('q') || '';
+  const [searchInput, setSearchInput] = useState(searchQuery);
+  const isComposingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isComposingRef.current) {
+      setSearchInput(searchQuery);
+    }
+  }, [searchQuery]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -248,11 +256,29 @@ export function GalleryPage({ categoryFilter }: GalleryPageProps) {
                 <input
                   ref={searchInputRef}
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => updateQuery({ q: e.target.value })}
+                  value={searchInput}
+                  onCompositionStart={() => {
+                    isComposingRef.current = true;
+                  }}
+                  onCompositionEnd={(e) => {
+                    isComposingRef.current = false;
+                    const nextVal = e.currentTarget.value;
+                    setSearchInput(nextVal);
+                    updateQuery({ q: nextVal });
+                  }}
+                  onChange={(e) => {
+                    const nextVal = e.target.value;
+                    setSearchInput(nextVal);
+                    if (!isComposingRef.current && !(e.nativeEvent as InputEvent).isComposing) {
+                      updateQuery({ q: nextVal });
+                    }
+                  }}
                   onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      if (searchQuery) updateQuery({ q: '' });
+                    if (e.key === 'Escape' && !isComposingRef.current && !e.nativeEvent.isComposing) {
+                      if (searchInput || searchQuery) {
+                        setSearchInput('');
+                        updateQuery({ q: '' });
+                      }
                       searchInputRef.current?.blur();
                     }
                   }}
@@ -263,10 +289,13 @@ export function GalleryPage({ categoryFilter }: GalleryPageProps) {
                     color: 'var(--text-primary)',
                   }}
                 />
-                {searchQuery ? (
+                {searchInput ? (
                   <button
                     type="button"
-                    onClick={() => updateQuery({ q: '' })}
+                    onClick={() => {
+                      setSearchInput('');
+                      updateQuery({ q: '' });
+                    }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
                   >
                     <X className="h-3.5 w-3.5" />
