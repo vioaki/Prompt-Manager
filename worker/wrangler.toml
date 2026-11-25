@@ -1,0 +1,36 @@
+name = "prompt-manager-pages-worker"
+main = "src/index.ts"
+compatibility_date = "2025-03-01"
+
+[vars]
+GITHUB_OWNER = "vioaki"
+GITHUB_REPO = "Prompt-Manager-Pages"
+GITHUB_DEFAULT_BRANCH = "main"
+PAGES_BASE_URL = "https://vioaki.github.io/Prompt-Manager-Pages"
+ALLOWED_ORIGINS = "https://vioaki.github.io"
+ADMIN_LOGINS = "vioaki"
+
+# Local development: create `.dev.vars` (gitignored) to override secrets and
+# set `ALLOWED_ORIGINS=https://vioaki.github.io,http://localhost:5173,http://127.0.0.1:5173`
+#
+# Sensitive secrets (configure with `wrangler secret put <NAME>`, never commit):
+# - GITHUB_CLIENT_ID
+# - GITHUB_CLIENT_SECRET
+# - SESSION_SECRET          (random 32+ bytes hex)
+#
+# Repository write credentials (choose Option A OR Option B):
+# Option A (GitHub App, recommended):
+# - GITHUB_APP_ID
+# - GITHUB_APP_INSTALLATION_ID
+# - GITHUB_APP_PRIVATE_KEY  (PKCS#1 or PKCS#8 PEM)
+#
+# Option B (Fine-grained PAT scoped only to GITHUB_REPO):
+# - GITHUB_BOT_TOKEN
+
+[[durable_objects.bindings]]
+name = "OAUTH_TICKETS"
+class_name = "OAuthTicket"
+
+[[migrations]]
+tag = "v1-oauth-tickets"
+new_sqlite_classes = ["OAuthTicket"]
