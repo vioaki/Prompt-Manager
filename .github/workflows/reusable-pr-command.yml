@@ -1,0 +1,187 @@
+name: Reusable PR Slash Command Handler
+
+on:
+  workflow_call:
+    inputs:
+      engine_repo:
+        type: string
+        default: 'vioaki/Prompt-Manager'
+      engine_ref:
+        type: string
+        default: 'pages'
+    secrets:
+      PR_PUSH_TOKEN:
+        description: 'Optional repository-scoped push credential to trigger required PR checks'
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  handle-command:
+    if: >-
+      github.event.issue.pull_request &&
+      (contains(github.event.comment.body, '/tags ') ||
+       contains(github.event.comment.body, '/category ') ||
+       contains(github.event.comment.body, '/apply-ai'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify permission & resolve PR branch
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMENT_ACTOR: ${{ github.event.comment.user.login }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          PERM=$(gh api "repos/${REPO}/collaborators/${COMMENT_ACTOR}/permission" --jq '.permission' 2>/dev/null || echo "none")
+          if [ "$PERM" != "admin" ] && [ "$PERM" != "maintain" ] && [ "$PERM" != "write" ]; then
+            echo "Actor ${COMMENT_ACTOR} lacks write permission (${PERM}); skipping."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          DEFAULT_BRANCH=$(gh api "repos/${REPO}" --jq '.default_branch')
+          PR_JSON=$(gh pr view "${PR_NUMBER}" --repo "${REPO}" --json headRefName,baseRefName,headRefOid,isCrossRepository,state)
+          STATE=$(echo "$PR_JSON" | jq -r '.state')
+          IS_CROSS=$(echo "$PR_JSON" | jq -r '.isCrossRepository')
+          HEAD_REF=$(echo "$PR_JSON" | jq -r '.headRefName')
+          BASE_REF=$(echo "$PR_JSON" | jq -r '.baseRefName')
+          HEAD_SHA=$(echo "$PR_JSON" | jq -r '.headRefOid')
+
+          if [ "$STATE" != "OPEN" ]; then
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$BASE_REF" != "$DEFAULT_BRANCH" ]; then
+            gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+              --body "⚠️ 斜杠指令仅支持目标为默认分支 \`${DEFAULT_BRANCH}\` 的投稿 PR。"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$IS_CROSS" = "true" ] || [ "$HEAD_REF" = "$DEFAULT_BRANCH" ] || [ "$HEAD_REF" = "$BASE_REF" ]; then
+            gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+              --body "⚠️ 该 PR 来自外部 Fork 仓库或受保护分支，斜杠指令无法直接回写分支，请在本地或 GitHub 上修改后提交。"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! [[ "$HEAD_REF" =~ ^submit/[a-z0-9][a-z0-9-]{2,118}[a-z0-9]$ ]]; then
+            gh pr comment "${PR_NUMBER}" --repo "${REPO}" \
+              --body "⚠️ 斜杠指令仅允许回写标准投稿分支（\`submit/*\`），请手动编辑当前分支。"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "head_ref=${HEAD_REF}" >> "$GITHUB_OUTPUT"
+          echo "base_ref=${BASE_REF}" >> "$GITHUB_OUTPUT"
+          echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
+          echo "should_run=true" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout PR branch
+        if: steps.pr.outputs.should_run == 'true'
+        uses: actions/checkout@v4
+        with:
+          path: data-repo
+          ref: ${{ steps.pr.outputs.head_sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Checkout engine
+        if: steps.pr.outputs.should_run == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.engine_repo }}
+          ref: ${{ inputs.engine_ref }}
+          path: engine
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        if: steps.pr.outputs.should_run == 'true'
+        with:
+          version: 10.0.0
+
+      - uses: actions/setup-node@v4
+        if: steps.pr.outputs.should_run == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: engine/pnpm-lock.yaml
+
+      - name: Install engine dependencies
+        if: steps.pr.outputs.should_run == 'true'
+        working-directory: engine
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply PR command
+        if: steps.pr.outputs.should_run == 'true'
+        working-directory: engine
+        env:
+          DATA_REPO_ROOT: ${{ github.workspace }}/data-repo
+          PR_NUMBER: ${{ github.event.issue.number }}
+          PR_BASE_REF: ${{ steps.pr.outputs.base_ref }}
+          PR_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: pnpm --filter @prompt-pages/scripts pr-command
+
+      - name: Validate modified content
+        if: steps.pr.outputs.should_run == 'true'
+        working-directory: engine
+        env:
+          CONTENT_DIR: ${{ github.workspace }}/data-repo/content
+          SITE_CONFIG_PATH: ${{ github.workspace }}/data-repo/site.config.json
+        run: pnpm validate
+
+      - name: Commit & push normalized metadata
+        id: push
+        if: steps.pr.outputs.should_run == 'true'
+        working-directory: data-repo
+        env:
+          GIT_AUTHOR_NAME: ${{ github.actor }}
+          GIT_AUTHOR_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
+          GIT_COMMITTER_NAME: ${{ github.actor }}
+          GIT_COMMITTER_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
+          PR_HEAD_REF: ${{ steps.pr.outputs.head_ref }}
+          GH_TOKEN: ${{ secrets.PR_PUSH_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet; then
+            git add -- content
+            git commit -m "chore(review): apply PR review command"
+            git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin -- "HEAD:refs/heads/${PR_HEAD_REF}"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          else
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Refresh PR preview comment
+        if: steps.pr.outputs.should_run == 'true' && steps.push.outputs.pushed == 'true'
+        working-directory: engine
+        env:
+          DATA_REPO_ROOT: ${{ github.workspace }}/data-repo
+          PR_NUMBER: ${{ github.event.issue.number }}
+          PR_BASE_REF: ${{ steps.pr.outputs.base_ref }}
+          PR_HEAD_SHA: ${{ steps.push.outputs.head_sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: pnpm --filter @prompt-pages/scripts pr-preview
+
+      - name: Record the validated slash-command commit
+        if: steps.push.outputs.pushed == 'true'
+        env:
+          VALIDATED_SHA: ${{ steps.push.outputs.head_sha }}
+        run: echo "$VALIDATED_SHA" > "$RUNNER_TEMP/validated-head"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.push.outputs.pushed == 'true'
+        with:
+          name: validated-pr-${{ github.event.issue.number }}-${{ steps.push.outputs.head_sha }}
+          path: ${{ runner.temp }}/validated-head
+          if-no-files-found: error

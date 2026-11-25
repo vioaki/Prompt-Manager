@@ -1,0 +1,69 @@
+name: Reusable PR Content Check & AI Preview
+
+on:
+  workflow_call:
+    inputs:
+      engine_repo:
+        type: string
+        default: 'vioaki/Prompt-Manager'
+      engine_ref:
+        type: string
+        default: 'pages'
+    secrets:
+      AI_API_KEY:
+        required: false
+      AI_BASE_URL:
+        required: false
+      AI_MODEL:
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check-and-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          path: data-repo
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Checkout engine
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.engine_repo }}
+          ref: ${{ inputs.engine_ref }}
+          path: engine
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: engine/pnpm-lock.yaml
+
+      - name: Install engine dependencies
+        working-directory: engine
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate content & post preview comment
+        working-directory: engine
+        env:
+          DATA_REPO_ROOT: ${{ github.workspace }}/data-repo
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+          AI_BASE_URL: ${{ secrets.AI_BASE_URL }}
+          AI_MODEL: ${{ secrets.AI_MODEL }}
+        run: pnpm --filter @prompt-pages/scripts pr-preview

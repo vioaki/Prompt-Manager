@@ -1,0 +1,43 @@
+name: Pages Engine CI
+
+on:
+  push:
+    branches: [pages]
+  pull_request:
+    branches: [pages]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Typecheck all packages
+        run: pnpm typecheck
+
+      - name: Validate content
+        run: pnpm validate
+
+      - name: Build static site
+        run: pnpm build
+
+      - name: Worker dry-run bundle
+        run: pnpm --filter @prompt-pages/worker build:dry-run

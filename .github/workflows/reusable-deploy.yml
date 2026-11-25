@@ -1,0 +1,101 @@
+name: Reusable Build & Deploy GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      engine_repo:
+        description: 'Engine repository (owner/name)'
+        type: string
+        default: 'vioaki/Prompt-Manager'
+      engine_ref:
+        description: 'Engine branch or tag'
+        type: string
+        default: 'pages'
+
+permissions:
+  contents: read
+  pages: read
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout data repository
+        uses: actions/checkout@v4
+        with:
+          path: data-repo
+          persist-credentials: false
+
+      - name: Checkout engine repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.engine_repo }}
+          ref: ${{ inputs.engine_ref }}
+          path: engine
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: engine/pnpm-lock.yaml
+
+      - name: Install engine dependencies
+        working-directory: engine
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Resolve Vite base path
+        id: base
+        env:
+          RAW_BASE: ${{ steps.pages.outputs.base_path }}
+        run: |
+          if [ -z "$RAW_BASE" ] || [ "$RAW_BASE" = "/" ]; then
+            echo "path=/" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=${RAW_BASE%/}/" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate & build static site
+        working-directory: engine
+        env:
+          CONTENT_DIR: ${{ github.workspace }}/data-repo/content
+          SITE_CONFIG_PATH: ${{ github.workspace }}/data-repo/site.config.json
+          CONTENT_REVISION: ${{ github.sha }}
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+          VITE_BASE_PATH: ${{ steps.base.outputs.path }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          pnpm validate
+          pnpm build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: engine/web/dist
+
+  deploy:
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
