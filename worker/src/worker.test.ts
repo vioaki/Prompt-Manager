@@ -439,12 +439,13 @@ describe('worker legacy read API & hardened admin endpoints', () => {
 
     const body = (await resp1.json()) as {
       code: number;
-      data: Array<{ file_path: string; media_type: string }>;
+      data: Array<{ id: number; file_path: string; media_type: string }>;
       meta: { total_items: number; server_timestamp: number };
     };
     expect(body.code).toBe(200);
     expect(body.meta.total_items).toBe(1);
     expect(typeof body.meta.server_timestamp).toBe('number');
+    expect(body.data[0].id).toBe(1);
     expect(body.data[0].file_path).toBe(
       'https://vioaki.github.io/Prompt-Manager-Pages/media/20251205-card-0001/main.webp',
     );

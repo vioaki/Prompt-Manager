@@ -8,7 +8,7 @@ export interface LegacyApiRef {
 }
 
 export interface LegacyApiItem {
-  id: string;
+  id: number;
   title: string;
   author: string;
   prompt: string;
@@ -54,6 +54,34 @@ export interface LegacyQueryOptions {
 
 const DEFAULT_PER_PAGE = 500;
 const HARD_LIMIT = 10_000;
+const LEGACY_FOUR_DIGIT_ID_RE = /^\d{8}-[a-z0-9-]+-(\d{4})$/;
+const HASHED_LEGACY_ID_MIN = 100_000;
+const HASHED_LEGACY_ID_SPAN = 0x7fffffff - HASHED_LEGACY_ID_MIN; // <= 2_147_483_646 (fits INT & INT UNSIGNED)
+
+/**
+ * Maps a string prompt ID to a stable positive 31-bit unsigned integer for legacy
+ * API clients (e.g. Koishi/Minato `remoteId: 'unsigned'` columns).
+ *
+ * - Migrated items (`YYYYMMDD-<slug>-0001`..`9999`) preserve their exact original integer ID (1..9999).
+ * - New items (`YYYYMMDD-<slug>-<6-hex>` or any other slug) map deterministically via FNV-1a
+ *   into [100_000, 2_147_483_646], avoiding overlap with legacy IDs while fitting 32-bit INT & UNSIGNED.
+ */
+export function toLegacyNumericId(id: string): number {
+  const legacyMatch = LEGACY_FOUR_DIGIT_ID_RE.exec(id);
+  if (legacyMatch) {
+    const parsed = Number.parseInt(legacyMatch[1], 10);
+    if (parsed >= 1 && parsed <= 9999) {
+      return parsed;
+    }
+  }
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++) {
+    hash ^= id.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  const positive31 = (hash >>> 0) & 0x7fffffff;
+  return HASHED_LEGACY_ID_MIN + (positive31 % HASHED_LEGACY_ID_SPAN);
+}
 
 function joinAbsoluteUrl(baseUrl: string, relativeOrAbsolute: string): string {
   if (/^https?:\/\//i.test(relativeOrAbsolute)) {
@@ -69,7 +97,7 @@ export function toLegacyApiItem(item: CatalogItem, mediaBaseUrl: string): Legacy
     item.media.mimeType === 'image/gif' ? 'gif' : 'image';
 
   return {
-    id: item.id,
+    id: toLegacyNumericId(item.id),
     title: item.title,
     author: item.author.name,
     prompt: item.prompt,

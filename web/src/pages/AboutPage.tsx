@@ -71,7 +71,7 @@ const RESPONSE_EXAMPLE = `{
   },
   "data": [
     {
-      "id": "20251205-item-0650",
+      "id": 650,
       "title": "拍立得",
       "author": "39c5bb",
       "type": "img2img",

@@ -7,6 +7,7 @@ import {
   queryLegacyApi,
   renderPromptWithVars,
   createPromptId,
+  toLegacyNumericId,
   type CatalogItem,
 } from './index.js';
 
@@ -159,6 +160,7 @@ describe('queryLegacyApi', () => {
 
     expect(res.code).toBe(200);
     expect(res.meta.total_items).toBe(1);
+    expect(res.data[0].id).toBe(2);
     expect(res.data[0].type).toBe('img2img');
     expect(res.data[0].media_type).toBe('gif');
     expect(res.data[0].file_path).toBe(
@@ -183,9 +185,25 @@ describe('queryLegacyApi', () => {
       endpointUrl: 'https://worker.example.dev/api/gallery',
     });
     expect(page1.data).toHaveLength(1);
+    expect(page1.data[0].id).toBe(1);
     expect(page1.meta.has_next).toBe(false);
     expect(page1.data[0].refs[0].file_path).toBe(
       'https://vioaki.github.io/Prompt-Manager-Pages/media/20251205-card-0001/ref-0.webp',
     );
+  });
+
+  it('maps migrated 4-digit IDs to original integers and new 6-hex IDs to stable unsigned 31-bit ints', () => {
+    expect(toLegacyNumericId('20251205-polaroid-0650')).toBe(650);
+    expect(toLegacyNumericId('20251205-card-0001')).toBe(1);
+
+    const newA = toLegacyNumericId('20261126-cyberpunk-girl-ab12cd');
+    const newB = toLegacyNumericId('20261126-cyberpunk-girl-ef3456');
+    const newNumericHex = toLegacyNumericId('20261126-prompt-012345');
+    expect(Number.isInteger(newA)).toBe(true);
+    expect(newA).toBeGreaterThanOrEqual(100_000);
+    expect(newA).toBeLessThan(0x7fffffff);
+    expect(toLegacyNumericId('20261126-cyberpunk-girl-ab12cd')).toBe(newA);
+    expect(newA).not.toBe(newB);
+    expect(newNumericHex).toBeGreaterThanOrEqual(100_000);
   });
 });
